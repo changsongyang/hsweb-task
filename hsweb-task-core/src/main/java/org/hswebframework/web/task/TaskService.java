@@ -8,11 +8,12 @@ public interface TaskService {
 
     Task findById(String taskId);
 
+    Task findByKey(String key);
+
     long total();
 
     Task createTask(String jobId);
 
     Task createTask(JobDetail jobDetail);
-
 
 }
