@@ -37,7 +37,7 @@ public class LocalCacheBatching<T> implements Batching<T> {
             while (true) {
                 flashAll.run();
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(Long.getLong("task.batch.flush-interval", 10000));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
