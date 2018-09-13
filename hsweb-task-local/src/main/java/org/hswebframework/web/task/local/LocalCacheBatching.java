@@ -20,16 +20,26 @@ public class LocalCacheBatching<T> implements Batching<T> {
 
     private Consumer<List<T>> batch;
 
-    private long lastFlushTime = 0;
+    private long lastInputTime = 0;
+
+    private final Object lock = new Object();
 
     private static List<LocalCacheBatching> all = new ArrayList<>();
 
     static {
+        long flushInterval = Long.getLong("task.batch.flush-interval", 10000);
+
         Runnable flashAll = () -> {
             for (LocalCacheBatching localCacheBatching : all) {
-                if (!localCacheBatching.cache.isEmpty()) {
-                    log.info("flush cache batching,size:{}", localCacheBatching.cache.size());
-                    localCacheBatching.flush();
+                //一定间隔内有新的数据进入则不flush
+                if (System.currentTimeMillis() - localCacheBatching.lastInputTime < flushInterval / 2) {
+                    continue;
+                }
+                synchronized (localCacheBatching.lock) {
+                    if (!localCacheBatching.cache.isEmpty()) {
+                        log.info("flush cache batching,size:{}", localCacheBatching.cache.size());
+                        localCacheBatching.flush();
+                    }
                 }
             }
         };
@@ -37,7 +47,7 @@ public class LocalCacheBatching<T> implements Batching<T> {
             while (true) {
                 flashAll.run();
                 try {
-                    Thread.sleep(Long.getLong("task.batch.flush-interval", 10000));
+                    Thread.sleep(Long.getLong("task.batch.flush-interval", flushInterval));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -63,26 +73,32 @@ public class LocalCacheBatching<T> implements Batching<T> {
     }
 
     @Override
-    public synchronized void input(T data) {
-        cache.add(data);
-        if (cache.size() >= batchSize) {
-            flush();
+    public void input(T data) {
+        synchronized (lock) {
+            cache.add(data);
+            lastInputTime = System.currentTimeMillis();
+            if (cache.size() >= batchSize) {
+                flush();
+            }
         }
     }
 
     @Override
-    public synchronized void onBatch(Consumer<List<T>> batch) {
-        if (this.batch == null) {
-            this.batch = batch;
-        } else {
-            this.batch = this.batch.andThen(batch);
+    public void onBatch(Consumer<List<T>> batch) {
+        synchronized (lock) {
+            if (this.batch == null) {
+                this.batch = batch;
+            } else {
+                this.batch = this.batch.andThen(batch);
+            }
         }
     }
 
-    private synchronized void flush() {
-        List<T> tmp = new ArrayList<>(cache);
-        lastFlushTime = System.currentTimeMillis();
-        cache.clear();
-        batch.accept(tmp);
+    private void flush() {
+        synchronized (lock) {
+            List<T> tmp = new ArrayList<>(cache);
+            cache.clear();
+            batch.accept(tmp);
+        }
     }
 }
