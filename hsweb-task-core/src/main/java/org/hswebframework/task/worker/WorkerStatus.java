@@ -8,17 +8,32 @@ public enum WorkerStatus {
     /**
      * 空闲
      */
-    idle,
+    idle((byte) 100),
     /**
      * 忙碌
      */
-    busy,
+    busy((byte) 50),
     /**
      * 已暂停
      */
-    pause,
+    pause((byte) 0),
+
     /**
-     * 已注销
+     * 离线
      */
-    unregister
+    offline((byte) 0),
+    /**
+     * 已关闭
+     */
+    shutdown((byte) 0);
+
+    private byte healthScore;
+
+    WorkerStatus(byte healthScore) {
+        this.healthScore = healthScore;
+    }
+
+    public byte getHealthScore() {
+        return healthScore;
+    }
 }

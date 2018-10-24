@@ -1,6 +1,5 @@
 package org.hswebframework.task.scheduler;
 
-import org.hswebframework.task.scheduler.history.ScheduleHistory;
 
 /**
  * 任务调度器,用于进行任务调度,发起任务执行请求等操作
@@ -15,5 +14,9 @@ public interface TaskScheduler {
     void cancel(String historyId, boolean force);
 
     boolean pause(String historyId);
+
+    void shutdown( boolean force);
+
+    void startup();
 
 }

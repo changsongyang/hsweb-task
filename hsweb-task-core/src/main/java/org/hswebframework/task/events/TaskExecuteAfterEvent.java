@@ -10,8 +10,5 @@ import org.hswebframework.task.TaskOperationResult;
 public class TaskExecuteAfterEvent {
     private Task task;
 
-    private String executionId;
-
     private TaskOperationResult result;
-
 }

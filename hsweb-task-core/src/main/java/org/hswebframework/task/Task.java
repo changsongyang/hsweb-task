@@ -31,6 +31,6 @@ public class Task {
 
     private long timeout;
 
-    private TaskExecuteStatus status;
+    private TaskStatus status;
 
 }

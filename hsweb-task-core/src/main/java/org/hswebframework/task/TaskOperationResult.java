@@ -14,9 +14,11 @@ public class TaskOperationResult {
 
     private String executionId;
 
-    private TaskExecuteStatus status;
+    private TaskStatus status;
 
     private boolean success;
+
+    private Object result;
 
     private String errorStack;
 

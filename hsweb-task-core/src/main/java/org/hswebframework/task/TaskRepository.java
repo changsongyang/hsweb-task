@@ -7,7 +7,7 @@ package org.hswebframework.task;
 public interface TaskRepository {
     Task findById(String taskId);
 
-    void changeStatus(String taskId, TaskExecuteStatus status);
+    void changeStatus(String taskId, TaskStatus status);
 
     Task save(Task task);
 }

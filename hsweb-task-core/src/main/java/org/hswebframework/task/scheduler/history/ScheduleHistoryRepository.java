@@ -10,9 +10,9 @@ import java.util.List;
  */
 public interface ScheduleHistoryRepository {
 
-    List<ScheduleHistory> findBySchedulerId(String schedulerId);
+    List<ScheduleHistory> findBySchedulerId(String schedulerId, SchedulerStatus... statuses);
 
     ScheduleHistory save(ScheduleHistory history);
 
-    void changeStatusById(String id, SchedulerStatus status);
+    void changeStatus(String id, SchedulerStatus status);
 }

@@ -1,6 +1,6 @@
 package org.hswebframework.task;
 
-public enum TaskExecuteStatus {
+public enum TaskStatus {
     //执行成功
     success,
     //执行失败

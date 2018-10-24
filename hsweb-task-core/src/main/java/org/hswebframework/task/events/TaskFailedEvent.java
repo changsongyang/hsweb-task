@@ -9,6 +9,6 @@ import org.hswebframework.task.Task;
 public class TaskFailedEvent {
     private Task task;
 
-    protected Throwable cause;
+    private Throwable cause;
 
 }

@@ -3,11 +3,12 @@ package org.hswebframework.task.job;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import org.hswebframework.task.TaskExecuteStatus;
+import org.hswebframework.task.TaskStatus;
 import org.hswebframework.task.TaskFactory;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 任务详情,用于配置任务信息以及执行策略等
@@ -68,9 +69,14 @@ public class JobDetail implements Serializable {
     private String content;
 
     /**
+     * 参数,执行任务的时候可指定参数
+     */
+    private Map<String, Object> parameters;
+
+    /**
      * 任务执行的超时时间
      *
-     * @see TaskExecuteStatus#timeout
+     * @see TaskStatus#timeout
      */
     private long executeTimeOut;
 
@@ -94,4 +100,8 @@ public class JobDetail implements Serializable {
      */
     private boolean parallel;
 
+    /**
+     * 是否启用
+     */
+    private boolean enabled;
 }

@@ -22,6 +22,7 @@ public class LocalBatchTaskBuilderTest {
         AtomicLong counter = new AtomicLong();
         builder
                 .input(consumer -> {
+                    //不停的生产数据
                     for (int i = 0; i < 100; i++) {
                         int fi = i;
                         try {
@@ -32,9 +33,9 @@ public class LocalBatchTaskBuilderTest {
                         for (int i1 = 0; i1 < 100000; i1++) {
                             consumer.accept(fi);
                         }
-
                     }
                 })
+                //每1000条数据为一批
                 .batching(new LocalCacheBatching<>(1000))
                 .handle((batch, output) -> {
 //                    log.info("do batch:" + batch);

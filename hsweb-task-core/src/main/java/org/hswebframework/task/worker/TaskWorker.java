@@ -1,7 +1,7 @@
 package org.hswebframework.task.worker;
 
-import org.hswebframework.task.TaskExecutor;
 import org.hswebframework.task.worker.event.WorkerStatusChangedEvent;
+import org.hswebframework.task.worker.executor.TaskExecutor;
 
 /**
  * @author zhouhao
@@ -47,24 +47,17 @@ public interface TaskWorker {
      * @return 时间戳毫秒
      * @see System#currentTimeMillis()
      */
-    long getRegisterTime();
+    long getStartupTime();
 
     /**
      * 注销时间,worker被标记为已注销时,该方法生效. 否则返回-1.
      *
      * @return 时间戳毫秒
      * @see System#currentTimeMillis()
-     * @see WorkerStatus#unregister
+     * @see WorkerStatus#shutdown
      * @see TaskWorkerManager#unregister(String, boolean)
      */
-    long getUnRegisterTime();
-
-    /**
-     * 当前worker可同时执行的最大任务数量
-     *
-     * @return 最大任务数量,-1为不限制数量
-     */
-    int getMaximum();
+    long getShutdownTime();
 
     /**
      * 当前work的健康度,满分100.
@@ -89,4 +82,12 @@ public interface TaskWorker {
      * @see TaskExecutor
      */
     TaskExecutor getExecutor();
+
+    void shutdown(boolean force);
+
+    void startup();
+
+    void pause();
+
+    void resume();
 }

@@ -1,4 +1,8 @@
-package org.hswebframework.task;
+package org.hswebframework.task.worker.executor;
+
+import org.hswebframework.task.ExecuteCounter;
+import org.hswebframework.task.Task;
+import org.hswebframework.task.TaskOperationResult;
 
 import java.util.function.Consumer;
 
@@ -15,5 +19,7 @@ public interface TaskExecutor extends ExecuteCounter {
      * @param task           任务信息
      * @param resultConsumer 任务执行后回调执行结果
      */
-    void submitTask(Task task, Consumer<TaskOperationResult> resultConsumer);
+    String submitTask(Task task, Consumer<TaskOperationResult> resultConsumer);
+
+    void shutdown(boolean force);
 }
