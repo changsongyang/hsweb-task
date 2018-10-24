@@ -11,6 +11,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
+ * 周期性调度器,使用{@link ScheduledExecutorService}实现
+ *
  * @author zhouhao
  * @since 1.0.0
  */
@@ -31,7 +33,11 @@ public class PeriodScheduler extends AbstractScheduler {
     public PeriodScheduler() {
     }
 
-    public void setExecutorService(ScheduledExecutorService executorService, long initialDelay, long period, TimeUnit timeUnit) {
+    public void setExecutorService(ScheduledExecutorService executorService) {
+        this.executorService = executorService;
+    }
+
+    public PeriodScheduler(ScheduledExecutorService executorService, long initialDelay, long period, TimeUnit timeUnit) {
         this.executorService = executorService;
         this.initialDelay = initialDelay;
         this.timeUnit = timeUnit;

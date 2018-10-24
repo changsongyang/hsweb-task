@@ -52,7 +52,7 @@ class DefaultTaskSchedulerTest extends Specification {
                 taskType: "java-method",
                 content: "org.hswebframework.task.scheduler.TestJob.execute",
                 executeTimeOut: 100000,
-                parallel: true
+                parallel: false
         ))
 
         //初始化调度器
@@ -72,13 +72,8 @@ class DefaultTaskSchedulerTest extends Specification {
 
     def "测试启动调度"() {
         given:
-        scheduler.schedule("testJob", new PeriodScheduler(
-                executorService: Executors.newSingleThreadScheduledExecutor(),
-                initialDelay: 100,
-                period: 100,
-                timeUnit: TimeUnit.MILLISECONDS
-        ))
-        Thread.sleep(2000)
+        scheduler.schedule("testJob", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 100, 100, TimeUnit.MILLISECONDS))
+        Thread.sleep(5000)
         scheduler.shutdown(true)
         expect:
         TestJob.atomicLong.get() != 0

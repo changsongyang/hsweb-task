@@ -1,6 +1,9 @@
 package org.hswebframework.task.scheduler;
 
 
+import org.hswebframework.task.scheduler.supports.PeriodScheduler;
+
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -8,6 +11,7 @@ import java.util.concurrent.TimeUnit;
  * @since 1.0.0
  */
 public abstract class Schedulers {
+
 
     public static Scheduler now() {
         // TODO: 18-10-23
@@ -25,10 +29,10 @@ public abstract class Schedulers {
         throw new UnsupportedOperationException();
     }
 
-    public static Scheduler fixedRate(long initialDelay,
-                                      long period,
-                                      TimeUnit unit) {
-        // TODO: 18-10-23
-        throw new UnsupportedOperationException();
+    public static Scheduler period(ScheduledExecutorService executorService,
+                                   long initialDelay,
+                                   long period,
+                                   TimeUnit unit) {
+        return new PeriodScheduler(executorService, initialDelay, period, unit);
     }
 }
