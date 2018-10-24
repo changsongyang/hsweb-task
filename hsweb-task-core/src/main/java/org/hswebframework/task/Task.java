@@ -33,4 +33,8 @@ public class Task {
 
     private TaskStatus status;
 
+    @Override
+    public String toString() {
+        return "Task(id="+id+",jobId="+jobId+",jobName="+job.getName()+",status="+status+")";
+    }
 }

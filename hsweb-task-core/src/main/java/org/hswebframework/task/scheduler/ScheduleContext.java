@@ -12,7 +12,5 @@ public interface ScheduleContext {
 
     void cancel();
 
-    void lock();
-
-    void release();
+    void next();
 }

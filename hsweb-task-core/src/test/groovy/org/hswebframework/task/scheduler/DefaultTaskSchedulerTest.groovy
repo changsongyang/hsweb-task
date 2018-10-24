@@ -2,10 +2,11 @@ package org.hswebframework.task.scheduler
 
 import org.hswebframework.task.DefaultEventSubscriberPublisher
 import org.hswebframework.task.job.JobDetail
+import org.hswebframework.task.lock.LocalScheduleLockManager
 import org.hswebframework.task.scheduler.memory.InMemoryJobRepository
 import org.hswebframework.task.scheduler.memory.InMemoryScheduleHistoryRepository
 import org.hswebframework.task.scheduler.memory.InMemoryTaskRepository
-import org.hswebframework.task.scheduler.supports.DelayScheduler
+import org.hswebframework.task.scheduler.supports.PeriodScheduler
 import org.hswebframework.task.worker.DefaultTaskWorker
 import org.hswebframework.task.worker.DefaultTaskWorkerManager
 import org.hswebframework.task.worker.TaskWorkerManager
@@ -49,7 +50,9 @@ class DefaultTaskSchedulerTest extends Specification {
         jobRepository.save(new JobDetail(
                 id: "testJob",
                 taskType: "java-method",
-                content: "org.hswebframework.task.scheduler.TestJob.execute"
+                content: "org.hswebframework.task.scheduler.TestJob.execute",
+                executeTimeOut: 100000,
+                parallel: true
         ))
 
         //初始化调度器
@@ -61,6 +64,7 @@ class DefaultTaskSchedulerTest extends Specification {
         scheduler.setSchedulerFactory(new DefaultSchedulerFactory())
         scheduler.setSchedulerId("test")
         scheduler.setTaskRepository(new InMemoryTaskRepository())
+        scheduler.setLockManager(new LocalScheduleLockManager())
         scheduler.setTaskFactory(new DefaultTaskFactory())
         scheduler.setTaskWorkerManager(manager)
         scheduler.startup();
@@ -68,13 +72,16 @@ class DefaultTaskSchedulerTest extends Specification {
 
     def "测试启动调度"() {
         given:
-        scheduler.schedule("testJob", new DelayScheduler(
+        scheduler.schedule("testJob", new PeriodScheduler(
                 executorService: Executors.newSingleThreadScheduledExecutor(),
-                delay: 1,
-                timeUnit: TimeUnit.SECONDS
+                initialDelay: 100,
+                period: 100,
+                timeUnit: TimeUnit.MILLISECONDS
         ))
-        Thread.sleep(2100)
+        Thread.sleep(2000)
+        scheduler.shutdown(true)
         expect:
         TestJob.atomicLong.get() != 0
+
     }
 }

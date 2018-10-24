@@ -71,6 +71,7 @@ public class JavaMethodInvokeTaskProvider implements RunnableTaskBuilderProvider
         Object[] invokeParameter = new Object[parameterCount];
         Class[] methodTypes = method.getParameterTypes();
         return (context) -> {
+            log.debug("invoke method :{}", content);
             for (int i = 0; i < parameterCount; i++) {
                 invokeParameter[i] = context.getParameter(String.valueOf(i), methodTypes[i]);
             }

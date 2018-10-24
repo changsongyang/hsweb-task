@@ -19,13 +19,13 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class DefaultRunnableTask implements RunnableTask {
 
-    private final    String              id;
-    private final    Task                task;
-    private final    TaskRunner          runner;
-    private volatile TaskStatus          status;
+    private final String id;
+    private final Task task;
+    private final TaskRunner runner;
+    private volatile TaskStatus status;
     private volatile TaskOperationResult lastResult;
-    private final    AtomicLong          successCounter = new AtomicLong();
-    private final    AtomicLong          failCounter    = new AtomicLong();
+    private final AtomicLong successCounter = new AtomicLong();
+    private final AtomicLong failCounter = new AtomicLong();
 
     public DefaultRunnableTask(Task task, TaskRunner runner) {
         this.task = task;
@@ -45,6 +45,7 @@ public class DefaultRunnableTask implements RunnableTask {
         result.setExecutionId(getId());
         result.setJobId(this.getTask().getJobId());
         result.setTaskId(this.getTask().getId());
+        result.setStartTime(System.currentTimeMillis());
         try {
             Object runResult = runner.run(context);
             result.setSuccess(true);
@@ -59,6 +60,7 @@ public class DefaultRunnableTask implements RunnableTask {
             e.printStackTrace(new PrintWriter(writer));
             result.setErrorStack(writer.toString());
         }
+        result.setEndTime(System.currentTimeMillis());
         return lastResult = result;
     }
 

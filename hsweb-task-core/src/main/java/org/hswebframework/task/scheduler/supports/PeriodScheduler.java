@@ -1,25 +1,26 @@
 package org.hswebframework.task.scheduler.supports;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.scheduler.ScheduleContext;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author zhouhao
  * @since 1.0.0
  */
-public class DelayScheduler extends AbstractScheduler {
+@Slf4j
+public class PeriodScheduler extends AbstractScheduler {
 
     private ScheduledExecutorService executorService;
 
-    private long delay;
+    private long initialDelay;
+    private long period;
 
     private TimeUnit timeUnit;
 
@@ -27,13 +28,14 @@ public class DelayScheduler extends AbstractScheduler {
         return executorService;
     }
 
-    public DelayScheduler() {
+    public PeriodScheduler() {
     }
 
-    public void setExecutorService(ScheduledExecutorService executorService, long delay, TimeUnit timeUnit) {
+    public void setExecutorService(ScheduledExecutorService executorService, long initialDelay, long period, TimeUnit timeUnit) {
         this.executorService = executorService;
-        this.delay = delay;
+        this.initialDelay = initialDelay;
         this.timeUnit = timeUnit;
+        this.period = period;
     }
 
     @Override
@@ -46,7 +48,7 @@ public class DelayScheduler extends AbstractScheduler {
         List<Long> timeList = new ArrayList<>(times);
         long currentTime = System.currentTimeMillis();
         for (int i = 0; i < times; i++) {
-            timeList.add(currentTime += timeUnit.toMillis(delay));
+            timeList.add(currentTime += timeUnit.toMillis(period));
         }
         return timeList;
     }
@@ -54,22 +56,28 @@ public class DelayScheduler extends AbstractScheduler {
     @Override
     public Map<String, Object> getConfiguration() {
         Map<String, Object> config = new HashMap<>();
-        config.put("delay", delay);
+        config.put("initialDelay", initialDelay);
+        config.put("period", period);
+
         config.put("timeUnit", timeUnit);
 
         return config;
     }
 
     public void initFromConfiguration(Map<String, Object> configuration) {
-        delay = (long) configuration.get("delay");
+        initialDelay = (long) configuration.get("initialDelay");
+        period = (long) configuration.get("period");
+
         timeUnit = (TimeUnit) configuration.get("timeUnit");
     }
 
     @Override
     protected void doStart() {
         AtomicReference<ScheduledFuture> futureAtomicReference = new AtomicReference<>();
+        // 为什么不使用scheduleAtFixedRate?
+        // 因为如果在执行间隔小于执行时间时,会导致任务队列堆积.
         futureAtomicReference.set(executorService.schedule(() ->
-                fire(consumer -> new ScheduleContext() {
+                fire(new ScheduleContext() {
                     @Override
                     public boolean isLastExecute() {
                         return false;
@@ -77,7 +85,7 @@ public class DelayScheduler extends AbstractScheduler {
 
                     @Override
                     public long getNextExecuteTime() {
-                        return DelayScheduler.this.getNextExecuteTime(1).get(0);
+                        return PeriodScheduler.this.getNextExecuteTime(1).get(0);
                     }
 
                     @Override
@@ -86,22 +94,10 @@ public class DelayScheduler extends AbstractScheduler {
                     }
 
                     @Override
-                    public void lock() {
-//                        synchronized (consumer) {
-//                            try {
-//                                consumer.wait();
-//                            } catch (InterruptedException e) {
-//                                e.printStackTrace();
-//                            }
-//                        }
+                    public void next() {
+                        doStart();
+                        cancel();
                     }
-
-                    @Override
-                    public void release() {
-//                        synchronized (consumer) {
-//                            consumer.notify();
-//                        }
-                    }
-                }), delay, timeUnit));
+                }), period, timeUnit));
     }
 }

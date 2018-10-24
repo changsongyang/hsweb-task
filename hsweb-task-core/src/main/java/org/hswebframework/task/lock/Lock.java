@@ -6,4 +6,7 @@ package org.hswebframework.task.lock;
  */
 public interface Lock {
     void release();
+
+    Lock fake = () -> {
+    };
 }

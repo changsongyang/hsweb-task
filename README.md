@@ -1,4 +1,11 @@
 # 任务模块
+[![Maven Central](https://img.shields.io/maven-central/v/org.hswebframework/hsweb-task.svg)](http://search.maven.org/#search%7Cga%7C1%7Corg.hswebframework/hsweb-task)
+[![Build Status](https://travis-ci.org/hs-web/hsweb-task.svg?branch=master)](https://travis-ci.org/hs-web/hsweb-task)
+[![codecov](https://codecov.io/gh/hs-web/hsweb-task/branch/master/graph/badge.svg)](https://codecov.io/gh/hs-web/hsweb-task)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0.html)
+
+
+
 提供任务配置,调度,监控. 支持单节点,集群,分布式部署.支持多种任务配置方式: 
 注解, jar包, 脚本(js,groovy)
 

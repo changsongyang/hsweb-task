@@ -22,4 +22,8 @@ public class TaskOperationResult {
 
     private String errorStack;
 
+    private long startTime;
+
+    private long endTime;
+
 }

@@ -1,9 +1,7 @@
 package org.hswebframework.task.scheduler.supports;
 
-import lombok.Getter;
 import org.hswebframework.task.scheduler.ScheduleContext;
 import org.hswebframework.task.scheduler.Scheduler;
-import org.hswebframework.task.scheduler.SchedulerFactoryProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,9 +27,9 @@ public abstract class AbstractScheduler implements Scheduler {
 
     protected abstract void initFromConfiguration(Map<String, Object> configuration);
 
-    protected void fire(Function<Consumer<ScheduleContext>, ScheduleContext> contextGetter) {
+    protected void fire(ScheduleContext context) {
         for (Consumer<ScheduleContext> consumer : allTriggerListener) {
-            consumer.accept(contextGetter.apply(consumer));
+            consumer.accept(context);
         }
     }
 
@@ -104,5 +102,8 @@ public abstract class AbstractScheduler implements Scheduler {
         return this;
     }
 
-
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + ":" + getConfiguration().toString();
+    }
 }

@@ -10,16 +10,20 @@ import org.hswebframework.task.events.TaskExecuteBeforeEvent;
 import org.hswebframework.task.events.TaskFailedEvent;
 import org.hswebframework.task.job.JobDetail;
 import org.hswebframework.task.job.JobRepository;
+import org.hswebframework.task.lock.Lock;
 import org.hswebframework.task.lock.ScheduleLockManager;
 import org.hswebframework.task.scheduler.history.ScheduleHistory;
 import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
 import org.hswebframework.task.worker.TaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author zhouhao
@@ -60,14 +64,20 @@ public class DefaultTaskScheduler implements TaskScheduler {
     @Setter
     private EventPublisher eventPublisher;
 
+    @Getter
+    @Setter
+    private ScheduleLockManager lockManager;
+
     private volatile boolean startup;
+
+    private Date startupTime;
 
     private Map<String, RunningScheduler> runningSchedulerMap = new ConcurrentHashMap<>();
 
     class RunningScheduler {
         private volatile Scheduler scheduler;
-        private volatile String    scheduleId;
-        private volatile String    historyId;
+        private volatile String scheduleId;
+        private volatile String historyId;
 
         void cancel(boolean force) {
             scheduler.cancel(force);
@@ -78,16 +88,20 @@ public class DefaultTaskScheduler implements TaskScheduler {
         for (RunningScheduler runningScheduler : runningSchedulerMap.values()) {
             runningScheduler.scheduler.stop(force);
         }
+        log.debug("shutdown scheduler {}", this);
     }
+
 
     public void startup() {
         if (startup) {
-            throw new UnsupportedOperationException("调度器已经启动");
+            throw new UnsupportedOperationException("task already startup with " + startupTime);
         }
+        startupTime = new Date();
         startup = true;
         //重启未执行的任务
         List<ScheduleHistory> histories = historyRepository
                 .findBySchedulerId(getSchedulerId(), SchedulerStatus.running, SchedulerStatus.pause);
+        log.debug("start up scheduler {}, auto start {} tasks", this, histories.size());
         for (ScheduleHistory history : histories) {
             Scheduler scheduler = schedulerFactory.create(history.getSchedulerConfiguration());
             Task task = taskRepository.findById(history.getTaskId());
@@ -96,7 +110,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
     }
 
     protected void logExecuteResult(TaskOperationResult result) {
-        log.debug("任务执行完成:{}", result);
+        log.debug("task complete :{} use time {}ms", result,result.getEndTime()-result.getStartTime());
     }
 
     protected void changeTaskStatus(Task task, TaskStatus taskStatus) {
@@ -112,7 +126,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         RunningScheduler runningScheduler = new RunningScheduler();
         runningScheduler.scheduleId = task.getScheduleId();
         runningScheduler.historyId = historyId;
-        runningSchedulerMap.put(task.getSchedulerId(), runningScheduler);
+        runningSchedulerMap.put(task.getScheduleId(), runningScheduler);
         historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.running);
         runningScheduler.scheduler = scheduler
                 .onCancel(() -> {
@@ -131,14 +145,16 @@ public class DefaultTaskScheduler implements TaskScheduler {
                     runningSchedulerMap.remove(runningScheduler.scheduleId);
                 })
                 .onTriggered((context) -> {
+                    Lock lock = Lock.fake;
                     try {
                         //选择worker
                         TaskWorker worker = taskWorkerManager.select(group);
                         if (worker != null) {
                             //如果不是并行,则锁住.避免重复执行
                             if (!parallel) {
-                                context.lock();
+                                lock = lockManager.tryGetLock("parallel_lock_for_job_" + task.getJobId(), task.getTimeout(), TimeUnit.MILLISECONDS);
                             }
+                            Lock finalLock = lock;
                             //修改状态
                             changeTaskStatus(task, TaskStatus.running);
 
@@ -147,35 +163,38 @@ public class DefaultTaskScheduler implements TaskScheduler {
                             //提交任务给worker
                             worker.getExecutor()
                                     .submitTask(task, result -> {
-                                        eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
-                                        changeTaskStatus(task, result.getStatus());
-                                        //如果不是并行,则释放锁.
-                                        if (!parallel) {
-                                            context.release();
+                                        try {
+                                            eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
+                                            changeTaskStatus(task, result.getStatus());
+                                            logExecuteResult(result);
+                                        }finally {
+                                            finalLock.release();
+                                            context.next();
                                         }
-                                        logExecuteResult(result);
                                     });
                         } else {
+                            lock.release();
+                            context.next();
                             changeTaskStatus(task, TaskStatus.noWorker);
                             eventPublisher.publish(new TaskFailedEvent(task, null));
-                            log.warn("未给任务:[{}]找到合适的worker.", task.getId());
+                            log.warn("can not find any worker for task:[{}]", task.getId());
                         }
                     } catch (Exception e) {
-                        if (!parallel) {
-                            context.release();
-                        }
+                        lock.release();
                         eventPublisher.publish(new TaskFailedEvent(task, e));
-                        log.error("调度失败,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
+                        log.error("schedule error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
+                        context.next();
                     }
                 })
                 .start();
+        log.debug("do schedule task {},scheduler:{}", task, scheduler);
     }
 
     @Override
     public void schedule(String jobId, Scheduler scheduler) {
         JobDetail job = jobRepository.findById(jobId);
         if (job == null) {
-            throw new NullPointerException("任务[" + jobId + "]不存在");
+            throw new NullPointerException("job [" + jobId + "] not exists");
         }
         //创建Task
         Task task = taskFactory.create(job);
@@ -217,5 +236,10 @@ public class DefaultTaskScheduler implements TaskScheduler {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + ":(startTime:" + startupTime + ",running:" + runningSchedulerMap.size() + ")";
     }
 }
