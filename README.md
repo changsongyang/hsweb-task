@@ -18,12 +18,6 @@
     <artifactId>hsweb-task-spring-boot-starter</artifactId>
     <version>${hsweb.task.version}</version>
 </dependency>
-
-<dependency>
-    <groupId>org.hswebframework</groupId>
-    <artifactId>hsweb-task-local</artifactId>
-    <version>${hsweb.task.version}</version>
-</dependency>
 ```
 
 ```java
@@ -101,7 +95,7 @@ hsweb:
     task:
       cluster:
         redis:
-          hosts: redis://127.0.0.1:8761
+          address: redis://127.0.0.1:6379
           database: 1
       worker:
         id: ${spring.application.name}-${HOST}
@@ -129,7 +123,7 @@ hsweb:
     task:
       cluster:
         redis:
-          hosts: redis://127.0.0.1:8761
+          address: redis://127.0.0.1:8761
           database: 1
       scheduler:
         id: ${spring.application.name}-${HOST}

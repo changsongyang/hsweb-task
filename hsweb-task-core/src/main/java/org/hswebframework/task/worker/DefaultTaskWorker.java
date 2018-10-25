@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.task.worker.executor.TaskExecutor;
 
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -43,6 +44,14 @@ public class DefaultTaskWorker implements TaskWorker {
 
     private TaskExecutor executor;
 
+
+    protected void setExecutor(TaskExecutor executor) {
+        this.executor = executor;
+    }
+
+    public DefaultTaskWorker() {
+    }
+
     public DefaultTaskWorker(TaskExecutor executor) {
         this.executor = executor;
     }
@@ -52,9 +61,15 @@ public class DefaultTaskWorker implements TaskWorker {
         if (registerId == null) {
             registerId = UUID.randomUUID().toString();
         }
+        validate();
         startupTime = System.currentTimeMillis();
     }
 
+    protected void validate() {
+        Objects.requireNonNull(getId(), "id can not be null");
+        Objects.requireNonNull(getGroups(), "groups can not be null");
+        Objects.requireNonNull(getRegisterId(), "registerId can not be null");
+    }
 
     @Override
     public byte getHealth() {

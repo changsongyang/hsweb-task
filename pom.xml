@@ -24,7 +24,7 @@
     <modules>
         <module>hsweb-task-core</module>
         <module>hsweb-task-cluster</module>
-        <module>hsweb-task-local</module>
+        <module>hsweb-task-spring-boot-starter</module>
     </modules>
 
     <build>

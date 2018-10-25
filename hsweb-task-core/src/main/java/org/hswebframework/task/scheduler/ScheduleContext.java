@@ -12,5 +12,5 @@ public interface ScheduleContext {
 
     void cancel();
 
-    void next();
+    void next(boolean currentSuccess);
 }

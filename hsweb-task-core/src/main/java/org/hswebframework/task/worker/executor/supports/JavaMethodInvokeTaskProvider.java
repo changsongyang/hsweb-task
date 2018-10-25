@@ -2,6 +2,7 @@ package org.hswebframework.task.worker.executor.supports;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.function.Function;
@@ -75,7 +76,15 @@ public class JavaMethodInvokeTaskProvider implements RunnableTaskBuilderProvider
             for (int i = 0; i < parameterCount; i++) {
                 invokeParameter[i] = context.getParameter(String.valueOf(i), methodTypes[i]);
             }
-            return finaleMethod.invoke(instance, (Object[]) invokeParameter);
+            try {
+                return finaleMethod.invoke(instance, (Object[]) invokeParameter);
+            } catch (InvocationTargetException e) {
+                if (e.getCause() != null) {
+                    throw e.getCause();
+                } else {
+                    throw e;
+                }
+            }
         };
 
     }

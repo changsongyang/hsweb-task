@@ -3,6 +3,7 @@ package org.hswebframework.task.scheduler;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -18,7 +19,9 @@ public class TestJob {
     public static long execute() {
         Thread.sleep(500);
         log.debug("do execute {} times", atomicLong.incrementAndGet());
-
+        if (new Random().nextInt(2) == 1) {
+            throw new RuntimeException("error");
+        }
         return atomicLong.get();
     }
 }

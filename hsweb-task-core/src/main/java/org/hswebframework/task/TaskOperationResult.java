@@ -22,6 +22,10 @@ public class TaskOperationResult {
 
     private String errorStack;
 
+    private String errorName;
+
+    private String message;
+
     private long startTime;
 
     private long endTime;

@@ -92,4 +92,9 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
     public long getWaiting() {
         return waiting.get();
     }
+
+    @Override
+    public void startup() {
+
+    }
 }

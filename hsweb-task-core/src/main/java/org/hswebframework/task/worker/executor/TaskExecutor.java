@@ -18,8 +18,11 @@ public interface TaskExecutor extends ExecuteCounter {
      *
      * @param task           任务信息
      * @param resultConsumer 任务执行后回调执行结果
+     * @return 返回本次任务的执行id
      */
     String submitTask(Task task, Consumer<TaskOperationResult> resultConsumer);
 
     void shutdown(boolean force);
+
+    void startup();
 }

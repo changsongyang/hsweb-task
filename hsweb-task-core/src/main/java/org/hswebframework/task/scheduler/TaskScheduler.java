@@ -15,7 +15,11 @@ public interface TaskScheduler {
 
     boolean pause(String historyId);
 
-    void shutdown( boolean force);
+    void shutdown(boolean force);
+
+    default void shutdownNow() {
+        shutdown(true);
+    }
 
     void startup();
 

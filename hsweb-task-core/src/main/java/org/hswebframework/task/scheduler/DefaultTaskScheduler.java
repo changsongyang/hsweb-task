@@ -4,14 +4,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.*;
-import org.hswebframework.task.events.TaskCreatedEvent;
-import org.hswebframework.task.events.TaskExecuteAfterEvent;
-import org.hswebframework.task.events.TaskExecuteBeforeEvent;
-import org.hswebframework.task.events.TaskFailedEvent;
+import org.hswebframework.task.events.*;
 import org.hswebframework.task.job.JobDetail;
 import org.hswebframework.task.job.JobRepository;
 import org.hswebframework.task.lock.Lock;
-import org.hswebframework.task.lock.ScheduleLockManager;
+import org.hswebframework.task.lock.LockManager;
 import org.hswebframework.task.scheduler.history.ScheduleHistory;
 import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
 import org.hswebframework.task.worker.TaskWorker;
@@ -66,7 +63,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     @Getter
     @Setter
-    private ScheduleLockManager lockManager;
+    private LockManager lockManager;
 
     private volatile boolean startup;
 
@@ -76,8 +73,10 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     class RunningScheduler {
         private volatile Scheduler scheduler;
-        private volatile String scheduleId;
-        private volatile String historyId;
+        private volatile String    scheduleId;
+        private volatile String    historyId;
+
+        private volatile AtomicLong errorCounter = new AtomicLong();
 
         void cancel(boolean force) {
             scheduler.cancel(force);
@@ -110,10 +109,11 @@ public class DefaultTaskScheduler implements TaskScheduler {
     }
 
     protected void logExecuteResult(TaskOperationResult result) {
-        log.debug("task complete :{} use time {}ms", result,result.getEndTime()-result.getStartTime());
+        log.debug("task complete :{} use time {}ms", result, result.getEndTime() - result.getStartTime());
     }
 
     protected void changeTaskStatus(Task task, TaskStatus taskStatus) {
+        eventPublisher.publish(new TaskStatusChangedEvent(task.getStatus(), taskStatus, task));
         taskRepository.changeStatus(task.getId(), taskStatus);
         task.setStatus(taskStatus);
         log.debug("task [{}] status changed : {} ", task.getId(), taskStatus);
@@ -128,6 +128,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         runningScheduler.historyId = historyId;
         runningSchedulerMap.put(task.getScheduleId(), runningScheduler);
         historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.running);
+
         runningScheduler.scheduler = scheduler
                 .onCancel(() -> {
                     taskRepository.changeStatus(task.getId(), TaskStatus.cancel);
@@ -167,14 +168,14 @@ public class DefaultTaskScheduler implements TaskScheduler {
                                             eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
                                             changeTaskStatus(task, result.getStatus());
                                             logExecuteResult(result);
-                                        }finally {
+                                        } finally {
                                             finalLock.release();
-                                            context.next();
+                                            context.next(result.isSuccess());
                                         }
                                     });
                         } else {
                             lock.release();
-                            context.next();
+                            context.next(false);
                             changeTaskStatus(task, TaskStatus.noWorker);
                             eventPublisher.publish(new TaskFailedEvent(task, null));
                             log.warn("can not find any worker for task:[{}]", task.getId());
@@ -183,7 +184,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                         lock.release();
                         eventPublisher.publish(new TaskFailedEvent(task, e));
                         log.error("schedule error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
-                        context.next();
+                        context.next(false);
                     }
                 })
                 .start();

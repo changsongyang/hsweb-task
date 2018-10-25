@@ -11,6 +11,11 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
     private Map<String, TaskWorker> workerRepository = new HashMap<>();
 
     @Override
+    public TaskWorker getWorkerById(String id) {
+        return workerRepository.get(id);
+    }
+
+    @Override
     public List<TaskWorker> getAllWorker() {
         return new ArrayList<>(workerRepository.values());
     }
@@ -44,5 +49,10 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
         }
         worker.shutdown(force);
         return worker;
+    }
+
+    @Override
+    public void startup() {
+
     }
 }

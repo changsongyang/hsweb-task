@@ -2,11 +2,10 @@ package org.hswebframework.task.scheduler
 
 import org.hswebframework.task.DefaultEventSubscriberPublisher
 import org.hswebframework.task.job.JobDetail
-import org.hswebframework.task.lock.LocalScheduleLockManager
+import org.hswebframework.task.lock.LocalLockManager
 import org.hswebframework.task.scheduler.memory.InMemoryJobRepository
 import org.hswebframework.task.scheduler.memory.InMemoryScheduleHistoryRepository
 import org.hswebframework.task.scheduler.memory.InMemoryTaskRepository
-import org.hswebframework.task.scheduler.supports.PeriodScheduler
 import org.hswebframework.task.worker.DefaultTaskWorker
 import org.hswebframework.task.worker.DefaultTaskWorkerManager
 import org.hswebframework.task.worker.TaskWorkerManager
@@ -64,7 +63,7 @@ class DefaultTaskSchedulerTest extends Specification {
         scheduler.setSchedulerFactory(new DefaultSchedulerFactory())
         scheduler.setSchedulerId("test")
         scheduler.setTaskRepository(new InMemoryTaskRepository())
-        scheduler.setLockManager(new LocalScheduleLockManager())
+        scheduler.setLockManager(new LocalLockManager())
         scheduler.setTaskFactory(new DefaultTaskFactory())
         scheduler.setTaskWorkerManager(manager)
         scheduler.startup();

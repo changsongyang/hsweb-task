@@ -10,6 +10,8 @@ import java.util.List;
  */
 public interface TaskWorkerManager {
 
+    TaskWorker getWorkerById(String id);
+
     /**
      * 获取全部worker
      *
@@ -43,4 +45,5 @@ public interface TaskWorkerManager {
      */
     TaskWorker unregister(String id, boolean force);
 
+    void startup();
 }

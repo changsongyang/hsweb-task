@@ -17,4 +17,5 @@ public interface ExecuteCounter {
     long getSuccess();
 
     long getWaiting();
+
 }

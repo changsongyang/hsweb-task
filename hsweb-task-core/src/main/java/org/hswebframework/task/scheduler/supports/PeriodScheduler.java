@@ -46,7 +46,7 @@ public class PeriodScheduler extends AbstractScheduler {
 
     @Override
     public String getType() {
-        return "delay";
+        return "period";
     }
 
     @Override
@@ -100,7 +100,7 @@ public class PeriodScheduler extends AbstractScheduler {
                     }
 
                     @Override
-                    public void next() {
+                    public void next(boolean currentSuccess) {
                         doStart();
                         cancel();
                     }
