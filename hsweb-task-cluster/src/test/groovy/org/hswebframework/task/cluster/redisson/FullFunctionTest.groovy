@@ -108,9 +108,10 @@ class FullFunctionTest extends Specification {
                 executeTimeOut: 100000,
                 parallel: true
         ))
-        scheduler.schedule("testJob", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 100, 100, TimeUnit.MILLISECONDS))
-        Thread.sleep(5000)
+        scheduler.schedule("testJob", Schedulers.period(Executors.newScheduledThreadPool(10), 100, 100, TimeUnit.MILLISECONDS))
+
         expect: "任务已执行"
+        sleep(5000)
         TestJob.atomicLong.get() != 0
 
     }

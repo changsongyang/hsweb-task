@@ -7,11 +7,14 @@ import org.hswebframework.task.cluster.Topic;
 import org.redisson.api.RCountDownLatch;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
+import org.redisson.api.listener.StatusListener;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -78,8 +81,8 @@ public class RedissonClusterManager implements ClusterManager {
             }
 
             @Override
-            public void publish(T payload) {
-                rTopic.publish(payload);
+            public long publish(T payload) {
+               return rTopic.publish(payload);
             }
 
             @Override

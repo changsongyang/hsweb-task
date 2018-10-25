@@ -1,6 +1,7 @@
 package org.hswebframework.task.worker.executor.supports;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.Task;
 import org.hswebframework.task.TaskOperationResult;
 import org.hswebframework.task.worker.executor.RunnableTask;
@@ -17,6 +18,7 @@ import java.util.function.Consumer;
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public class ThreadPoolTaskExecutor implements TaskExecutor {
 
     private final AtomicLong submitted = new AtomicLong();
@@ -51,8 +53,10 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
         executorService.submit(() -> {
             waiting.decrementAndGet();
             running.incrementAndGet();
+            log.info("start task [{}]",task.getId());
             TaskOperationResult result = runnableTask.run();
             resultConsumer.accept(result);
+            log.info("task [{}] execute {}",task.getId(),result.getStatus());
             if (result.isSuccess()) {
                 success.incrementAndGet();
             } else {

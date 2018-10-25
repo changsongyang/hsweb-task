@@ -1,5 +1,6 @@
 package org.hswebframework.task.cluster.worker;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.Task;
 import org.hswebframework.task.TaskOperationResult;
 import org.hswebframework.task.cluster.ClusterManager;
@@ -11,6 +12,7 @@ import java.util.function.Consumer;
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public class WorkerTaskExecutor extends ClusterTaskExecutor {
 
     private TaskExecutor localExecutor;
@@ -30,8 +32,11 @@ public class WorkerTaskExecutor extends ClusterTaskExecutor {
     public void startup() {
         topicId = getTaskTopic()
                 .subscribe(clusterTask ->//订阅任务
+                {
+                    log.info("worker [{}] accept cluster task ,taskId={},requestId={}",workerId,clusterTask.getTask().getId(),clusterTask.getRequestId());
                         submitTask(clusterTask.getTask(), //提交到本地任务
-                                result -> responseTaskResult(clusterTask.getRequestId(), result)));
+                                result -> responseTaskResult(clusterTask.getRequestId(), result));
+                });
     }
 
 

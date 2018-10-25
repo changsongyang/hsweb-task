@@ -38,7 +38,7 @@ public class RedissonLockManager implements LockManager {
             rSemaphore.trySetPermits(1);
             return rSemaphore;
         });
-        log.debug("try lock {} waiting:{},id={}", lockName, semaphore.availablePermits(), id);
+        log.debug("try lock {} permits:{},id={}", lockName, semaphore.availablePermits(), id);
         boolean success = semaphore.tryAcquire(timeout, timeUnit);
         if (!success) {
             throw new TimeoutException("try lock " + lockName + " timeout");

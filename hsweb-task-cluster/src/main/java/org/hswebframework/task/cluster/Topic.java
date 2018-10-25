@@ -12,7 +12,7 @@ public interface Topic<T> {
 
     void unSubscribe(long id);
 
-    void publish(T payload);
+    long publish(T payload);
 
     void close();
 }

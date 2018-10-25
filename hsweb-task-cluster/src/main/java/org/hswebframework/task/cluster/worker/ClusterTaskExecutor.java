@@ -1,5 +1,6 @@
 package org.hswebframework.task.cluster.worker;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.TaskOperationResult;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.ClusterTask;
@@ -13,6 +14,7 @@ import java.util.function.Consumer;
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public abstract class ClusterTaskExecutor implements TaskExecutor {
     private final AtomicLong submitted = new AtomicLong();
 
@@ -40,11 +42,9 @@ public abstract class ClusterTaskExecutor implements TaskExecutor {
     public void consumeTaskResult(String requestId, Consumer<TaskOperationResult> consumer) {
         Topic<TaskOperationResult> resultTopic = clusterManager.getTopic("task:result:" + requestId);
         resultTopic.subscribe(result -> {
-            try {
-                consumer.accept(result);
-            } finally {
-                resultTopic.close();//结束主题
-            }
+            consumer.accept(result);
+            resultTopic.close();
+            log.info("worker[{}] response task result [status={}],requestId={}",workerId, result.getStatus(), requestId);
         });
     }
 

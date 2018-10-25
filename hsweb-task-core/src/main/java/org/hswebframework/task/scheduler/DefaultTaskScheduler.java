@@ -159,6 +159,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                         //选择worker
                         TaskWorker worker = taskWorkerManager.select(group);
                         if (worker != null) {
+                            log.debug("select worker[{}] execute job[{}]",worker.getId(),task.getJobId());
                             //如果不是并行,则锁住.避免重复执行
                             if (!parallel) {
                                 lock = lockManager.tryGetLock("parallel_lock_for_job_" + task.getJobId(), task.getTimeout(), TimeUnit.MILLISECONDS);
