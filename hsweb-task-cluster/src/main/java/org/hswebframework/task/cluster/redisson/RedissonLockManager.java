@@ -7,7 +7,9 @@ import org.hswebframework.task.lock.LockManager;
 import org.redisson.api.RSemaphore;
 import org.redisson.api.RedissonClient;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -20,6 +22,8 @@ public class RedissonLockManager implements LockManager {
 
     private RedissonClient redissonClient;
 
+    private Map<String, RSemaphore> rSemaphoreMap = new ConcurrentHashMap<>();
+
     public RedissonLockManager(RedissonClient redissonClient) {
         this.redissonClient = redissonClient;
     }
@@ -28,9 +32,13 @@ public class RedissonLockManager implements LockManager {
     @SneakyThrows
     public Lock tryGetLock(String lockName, long timeout, TimeUnit timeUnit) {
         String id = UUID.randomUUID().toString();
-        log.debug("try lock {} ,id={}", lockName, id);
-        RSemaphore semaphore = redissonClient.getSemaphore(lockName);
-        semaphore.trySetPermits(1);
+
+        RSemaphore semaphore = rSemaphoreMap.computeIfAbsent(lockName, key -> {
+            RSemaphore rSemaphore = redissonClient.getSemaphore(key);
+            rSemaphore.trySetPermits(1);
+            return rSemaphore;
+        });
+        log.debug("try lock {} waiting:{},id={}", lockName, semaphore.availablePermits(), id);
         boolean success = semaphore.tryAcquire(timeout, timeUnit);
         if (!success) {
             throw new TimeoutException("try lock " + lockName + " timeout");
@@ -39,5 +47,10 @@ public class RedissonLockManager implements LockManager {
             semaphore.release();
             log.debug("unlock {},id={}", lockName, id);
         };
+    }
+
+    @Override
+    public void releaseALl() {
+        rSemaphoreMap.values().forEach(RSemaphore::release);
     }
 }

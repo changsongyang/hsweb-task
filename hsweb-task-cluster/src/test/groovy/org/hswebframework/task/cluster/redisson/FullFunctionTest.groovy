@@ -66,7 +66,7 @@ class FullFunctionTest extends Specification {
         scheduler.setSchedulerFactory(new DefaultSchedulerFactory())
         scheduler.setSchedulerId("test")
         scheduler.setTaskRepository(new InMemoryTaskRepository())
-        scheduler.setLockManager(new RedissonLockManager(redisson))
+        scheduler.setLockManager(new LocalLockManager())
         scheduler.setTaskFactory(new DefaultTaskFactory())
         scheduler.setTaskWorkerManager(schedulerWorkerManager)
         scheduler.startup()
@@ -106,9 +106,9 @@ class FullFunctionTest extends Specification {
                 taskType: "java-method",
                 content: "org.hswebframework.task.cluster.redisson.TestJob.execute",
                 executeTimeOut: 100000,
-                parallel: false
+                parallel: true
         ))
-        scheduler.schedule("testJob", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 1000, 1000, TimeUnit.MILLISECONDS))
+        scheduler.schedule("testJob", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 100, 100, TimeUnit.MILLISECONDS))
         Thread.sleep(5000)
         expect: "任务已执行"
         TestJob.atomicLong.get() != 0

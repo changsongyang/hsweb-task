@@ -16,6 +16,11 @@ public class LocalLockManager implements LockManager {
     private Map<String, Semaphore> semaphoreMap = new ConcurrentHashMap<>();
 
     @Override
+    public void releaseALl() {
+        semaphoreMap.values().forEach(Semaphore::release);
+    }
+
+    @Override
     @SneakyThrows
     public Lock tryGetLock(String lockName, long timeout, TimeUnit timeUnit) {
         String id = UUID.randomUUID().toString();

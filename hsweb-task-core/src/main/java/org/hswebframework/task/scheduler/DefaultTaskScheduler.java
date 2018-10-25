@@ -31,6 +31,10 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     @Getter
     @Setter
+    private boolean autoShutdown = true;
+
+    @Getter
+    @Setter
     private String schedulerId;
 
     @Getter
@@ -87,6 +91,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         for (RunningScheduler runningScheduler : runningSchedulerMap.values()) {
             runningScheduler.scheduler.stop(force);
         }
+        lockManager.releaseALl();
         log.debug("shutdown scheduler {}", this);
     }
 
@@ -94,6 +99,9 @@ public class DefaultTaskScheduler implements TaskScheduler {
     public void startup() {
         if (startup) {
             throw new UnsupportedOperationException("task already startup with " + startupTime);
+        }
+        if (autoShutdown) {
+            Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownNow));
         }
         startupTime = new Date();
         startup = true;

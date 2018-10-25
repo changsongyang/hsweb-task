@@ -56,13 +56,17 @@ public class ClusterWorkerManager implements TaskWorkerManager {
 
     @Override
     public TaskWorker register(TaskWorker worker) {
-        worker.startup();
-        localWorker.put(worker.getId(), worker);
+        doRegister(worker);
         //如果不是调度器节点则推送通知
         if (!(worker instanceof SchedulerTaskWorker)) {
             workerJoinTopic.publish(WorkerInfo.of(worker));
         }
         return worker;
+    }
+
+    public void doRegister(TaskWorker worker) {
+        worker.startup();
+        localWorker.put(worker.getId(), worker);
     }
 
     @Override
@@ -87,7 +91,7 @@ public class ClusterWorkerManager implements TaskWorkerManager {
         workerJoinTopic.subscribe(workerInfo -> {
             log.debug("worker join: {}", workerInfo);
             SchedulerTaskWorker worker = new SchedulerTaskWorker(clusterManager, workerInfo.getId());
-            register(worker);
+            doRegister(worker);
         });
         //worker leave
         workerLeaveTopic.subscribe(workerInfo -> {

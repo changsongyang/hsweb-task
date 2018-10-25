@@ -10,4 +10,5 @@ public interface LockManager {
 
     Lock tryGetLock(String lockName, long timeout, TimeUnit timeUnit);
 
+    void releaseALl();
 }
