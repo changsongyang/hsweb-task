@@ -53,7 +53,7 @@ class RedissonClusterManagerTest extends Specification {
             Thread.sleep(1000)
             queue.offer("1234")
         }).start()
-        def val = queue.poll();
+        def val = queue.poll(2000,TimeUnit.MILLISECONDS);
         expect:
         val == "1234"
     }
