@@ -22,8 +22,8 @@
 
 ```java
  @SpringBootApplication
- @EnableJobWorker
- @EnableJobScheduler
+ @EnableTaskWorker
+ @EnableTaskScheduler
  public class Application{
     
     public static void main(String[] args) {
@@ -74,7 +74,7 @@ hsweb:
  
  ```java
  @SpringBootApplication
- @EnableJobWorker
+ @EnableTaskWorker
  public class Application{
     
     public static void main(String[] args) {
@@ -108,7 +108,7 @@ hsweb:
 
 ```java
  @SpringBootApplication
- @EnableJobScheduler
+ @EnableTaskScheduler
  public class Application{
      public static void main(String[] args) {
          SpringApplication.run(Application.class);
