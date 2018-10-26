@@ -8,6 +8,8 @@ import org.hswebframework.task.worker.TaskWorkerManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * @author zhouhao
@@ -86,17 +88,40 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     }
 
     @Override
+    public void shutdown() {
+        getAllWorker()
+                .stream()
+                .filter(worker -> !(worker instanceof SchedulerTaskWorker))
+                .map(TaskWorker::getId)
+                .forEach(id -> this.unregister(id, false));
+    }
+
+    @Override
     public void startup() {
-        //worker join
-        workerJoinTopic.subscribe(workerInfo -> {
+
+        Consumer<WorkerInfo> joinWorker = workerInfo -> {
+            if (System.currentTimeMillis() - workerInfo.getLastHeartbeatTime() > TimeUnit.SECONDS.toMillis(30)) {
+                clusterWorkerInfoList.remove(workerInfo.getId());
+                log.debug("worker[{}] is dead ", workerInfo.getId());
+                return;
+            }
+            TaskWorker oldWorker = localWorker.get(workerInfo.getId());
+            if (oldWorker != null && !(oldWorker instanceof SchedulerTaskWorker)) {
+                return;
+            }
             log.debug("worker join: {}", workerInfo);
             SchedulerTaskWorker worker = new SchedulerTaskWorker(clusterManager, workerInfo.getId());
             doRegister(worker);
-        });
+        };
+        //worker join
+        workerJoinTopic.subscribe(joinWorker);
         //worker leave
         workerLeaveTopic.subscribe(workerInfo -> {
             log.debug("worker leave: {}", workerInfo);
             localWorker.remove(workerInfo.getId());
         });
+        clusterWorkerInfoList
+                .values()
+                .forEach(joinWorker);
     }
 }

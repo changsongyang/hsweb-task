@@ -91,6 +91,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         for (RunningScheduler runningScheduler : runningSchedulerMap.values()) {
             runningScheduler.scheduler.stop(force);
         }
+        taskWorkerManager.shutdown();
         lockManager.releaseALl();
         log.debug("shutdown scheduler {}", this);
     }
@@ -103,6 +104,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         if (autoShutdown) {
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownNow));
         }
+        taskWorkerManager.startup();
         startupTime = new Date();
         startup = true;
         //重启未执行的任务
@@ -159,7 +161,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                         //选择worker
                         TaskWorker worker = taskWorkerManager.select(group);
                         if (worker != null) {
-                            log.debug("select worker[{}] execute job[{}]",worker.getId(),task.getJobId());
+                            log.debug("select worker[{}] execute job[{}]", worker.getId(), task.getJobId());
                             //如果不是并行,则锁住.避免重复执行
                             if (!parallel) {
                                 lock = lockManager.tryGetLock("parallel_lock_for_job_" + task.getJobId(), task.getTimeout(), TimeUnit.MILLISECONDS);

@@ -46,4 +46,6 @@ public interface TaskWorkerManager {
     TaskWorker unregister(String id, boolean force);
 
     void startup();
+
+    void shutdown();
 }

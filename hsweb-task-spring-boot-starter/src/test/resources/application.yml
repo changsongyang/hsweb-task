@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: test-application
+
+hsweb:
+  task:
+    worker:
+      id: ${spring.application.name}
+      groups: ${spring.application.name}
+      name: 测试worker
+    scheduler:
+      id: ${spring.application.name}
+logging:
+  level:
+    org.hswebframework: debug

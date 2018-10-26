@@ -55,4 +55,9 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
     public void startup() {
 
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

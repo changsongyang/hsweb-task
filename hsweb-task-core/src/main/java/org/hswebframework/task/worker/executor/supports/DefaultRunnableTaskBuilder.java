@@ -25,7 +25,9 @@ public class DefaultRunnableTaskBuilder implements RunnableTaskBuilder {
         String type = task.getJob().getTaskType();
         RunnableTaskBuilderProvider provider = providers.get(type);
         if (provider == null) {
-            throw new UnsupportedOperationException("不支持的任务类型[" + type + "]");
+            return new DefaultRunnableTask(task, (context) -> {
+                throw new UnsupportedOperationException("un support task type:" + task.getJob().getTaskType());
+            });
         }
 
         TaskRunner runner = provider.build(task.getJob().getContent());
