@@ -6,6 +6,7 @@ import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.redisson.RedissonClusterManager;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
+import org.redisson.api.RedissonReactiveClient;
 import org.redisson.config.Config;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -39,8 +40,7 @@ public class ClusterManagerConfiguration {
                     .setDatabase(database)
                     .setAddress(address)
                     .setPassword(password);
-            RedissonClient redissonClient = Redisson.create(config);
-            return new RedissonClusterManager(redissonClient);
+            return new RedissonClusterManager(Redisson.create(config));
         }
     }
 }

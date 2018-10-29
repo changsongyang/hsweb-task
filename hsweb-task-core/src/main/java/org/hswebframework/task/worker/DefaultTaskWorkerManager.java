@@ -1,6 +1,7 @@
 package org.hswebframework.task.worker;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * @author zhouhao
@@ -49,6 +50,22 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
         }
         worker.shutdown(force);
         return worker;
+    }
+
+    @Override
+    public long onWorkerJoin(Consumer<TaskWorker> workerConsumer) {
+        long hash = System.identityHashCode(workerConsumer);
+
+
+        return hash;
+    }
+
+    @Override
+    public long onWorkerLeave(Consumer<TaskWorker> workerConsumer) {
+        long hash = System.identityHashCode(workerConsumer);
+
+
+        return hash;
     }
 
     @Override

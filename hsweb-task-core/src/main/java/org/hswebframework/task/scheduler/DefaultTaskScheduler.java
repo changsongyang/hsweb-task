@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * @author zhouhao
@@ -85,6 +86,13 @@ public class DefaultTaskScheduler implements TaskScheduler {
         void cancel(boolean force) {
             scheduler.cancel(force);
         }
+
+        private boolean doError(String errorName, TaskStatus status) {
+
+            errorCounter.incrementAndGet();
+
+            return true;
+        }
     }
 
     public void shutdown(boolean force) {
@@ -109,7 +117,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         startup = true;
         //重启未执行的任务
         List<ScheduleHistory> histories = historyRepository
-                .findBySchedulerId(getSchedulerId(), SchedulerStatus.running, SchedulerStatus.pause);
+                .findBySchedulerId(getSchedulerId(), SchedulerStatus.noWorker, SchedulerStatus.running, SchedulerStatus.pause);
         log.debug("start up scheduler {}, auto start {} tasks", this, histories.size());
         for (ScheduleHistory history : histories) {
             Scheduler scheduler = schedulerFactory.create(history.getSchedulerConfiguration());
@@ -169,33 +177,40 @@ public class DefaultTaskScheduler implements TaskScheduler {
                             Lock finalLock = lock;
                             //修改状态
                             changeTaskStatus(task, TaskStatus.running);
-
                             eventPublisher.publish(new TaskExecuteBeforeEvent(task));
-
                             //提交任务给worker
-                            worker.getExecutor()
-                                    .submitTask(task, result -> {
-                                        try {
-                                            eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
-                                            changeTaskStatus(task, result.getStatus());
-                                            logExecuteResult(result);
-                                        } finally {
-                                            finalLock.release();
-                                            context.next(result.isSuccess());
+                            worker.getExecutor().submitTask(task, result -> {
+                                try {
+                                    eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
+                                    changeTaskStatus(task, result.getStatus());
+                                    logExecuteResult(result);
+                                } finally {
+                                    finalLock.release();
+                                    if (!result.isSuccess()) {
+                                        if (runningScheduler.doError(result.getErrorName(), result.getStatus())) {
+                                            context.next(false);
                                         }
-                                    });
+                                    } else {
+                                        context.next(true);
+                                    }
+                                }
+                            });
                         } else {
                             lock.release();
-                            context.next(false);
                             changeTaskStatus(task, TaskStatus.noWorker);
                             eventPublisher.publish(new TaskFailedEvent(task, null));
+                            if (runningScheduler.doError(null, TaskStatus.noWorker)) {
+                                context.next(false);
+                            }
                             log.warn("can not find any worker for task:[{}]", task.getId());
                         }
                     } catch (Exception e) {
                         lock.release();
                         eventPublisher.publish(new TaskFailedEvent(task, e));
                         log.error("schedule error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
-                        context.next(false);
+                        if (runningScheduler.doError(e.getClass().getName(), TaskStatus.failed)) {
+                            context.next(false);
+                        }
                     }
                 })
                 .start();

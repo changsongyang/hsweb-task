@@ -8,5 +8,6 @@ public enum SchedulerStatus {
     running,
     stop,
     pause,
+    noWorker,
     cancel;
 }

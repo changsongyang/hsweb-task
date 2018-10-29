@@ -4,9 +4,12 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.Task;
 import org.hswebframework.task.TaskOperationResult;
+import org.hswebframework.task.TaskStatus;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.ClusterTask;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -27,11 +30,32 @@ public class SchedulerTaskExecutor extends ClusterTaskExecutor {
         ClusterTask clusterTask = new ClusterTask();
         clusterTask.setRequestId(UUID.randomUUID().toString());
         clusterTask.setTask(task);
-        log.info("wait worker[{}] response task result,requestId={}", workerId, clusterTask.getRequestId());
-        consumeTaskResult(clusterTask.getRequestId(), resultConsumer);
-        log.info("task published to worker[{}]", workerId);
-        long workers = getTaskTopic().publish(clusterTask);
-        log.info("task published to worker[{}]:{}", workerId, workers > 0 ? "success" : "fail");
+        try {
+            log.info("wait worker[{}] response task result,requestId={}", workerId, clusterTask.getRequestId());
+            consumeTaskResult(clusterTask.getRequestId(), resultConsumer);
+            log.info("task published to worker[{}]", workerId);
+            boolean success = getTaskQueue().add(clusterTask);
+            log.info("task published to worker[{}]:{}", workerId, success ? "success" : "fail");
+            if (!success) {
+                TaskOperationResult error = new TaskOperationResult();
+                error.setTaskId(task.getId());
+                error.setJobId(task.getJobId());
+                error.setStatus(TaskStatus.cancel);
+                error.setMessage("未能正确选择worker");
+                resultConsumer.accept(error);
+            }
+        } catch (Exception e) {
+            TaskOperationResult error = new TaskOperationResult();
+            error.setMessage(e.getMessage());
+            error.setErrorName(e.getClass().getName());
+            error.setExecutionId(clusterTask.getRequestId());
+            error.setStatus(TaskStatus.failed);
+            error.setTaskId(task.getId());
+            error.setJobId(task.getJobId());
+            StringWriter writer = new StringWriter();
+            e.printStackTrace(new PrintWriter(writer));
+            error.setErrorStack(writer.toString());
+        }
         return clusterTask.getRequestId();
     }
 

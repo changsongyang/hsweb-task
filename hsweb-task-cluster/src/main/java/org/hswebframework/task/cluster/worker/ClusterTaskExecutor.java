@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.TaskOperationResult;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.ClusterTask;
-import org.hswebframework.task.cluster.Topic;
+import org.hswebframework.task.cluster.Queue;
 import org.hswebframework.task.worker.executor.TaskExecutor;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,22 +35,23 @@ public abstract class ClusterTaskExecutor implements TaskExecutor {
         this.workerId = workerId;
     }
 
-    public Topic<ClusterTask> getTaskTopic() {
-        return clusterManager.getTopic("task:accept:" + workerId);
+    public Queue<ClusterTask> getTaskQueue() {
+        return clusterManager.getQueue("task:accept:" + workerId);
     }
 
     public void consumeTaskResult(String requestId, Consumer<TaskOperationResult> consumer) {
-        Topic<TaskOperationResult> resultTopic = clusterManager.getTopic("task:result:" + requestId);
-        resultTopic.subscribe(result -> {
+        Queue<TaskOperationResult> resultTopic = clusterManager.getQueue("task:result:" + requestId);
+        resultTopic.consume(result -> {
             consumer.accept(result);
             resultTopic.close();
-            log.info("worker[{}] response task result [status={}],requestId={}",workerId, result.getStatus(), requestId);
+            log.info("worker[{}] response task result [status={}],requestId={}", workerId, result.getStatus(), requestId);
         });
     }
 
     public void responseTaskResult(String requestId, TaskOperationResult result) {
-        Topic<TaskOperationResult> resultTopic = clusterManager.getTopic("task:result:" + requestId);
-        resultTopic.publish(result);
+        Queue<TaskOperationResult> resultTopic = clusterManager.getQueue("task:result:" + requestId);
+        result.setExecutionId(requestId);
+        resultTopic.add(result);
     }
 
     @Override

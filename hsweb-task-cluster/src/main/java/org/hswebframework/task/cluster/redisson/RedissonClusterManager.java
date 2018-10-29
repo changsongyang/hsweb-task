@@ -1,29 +1,31 @@
 package org.hswebframework.task.cluster.redisson;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.cluster.ClusterCountDownLatch;
 import org.hswebframework.task.cluster.ClusterManager;
+import org.hswebframework.task.cluster.Queue;
 import org.hswebframework.task.cluster.Topic;
-import org.redisson.api.RCountDownLatch;
-import org.redisson.api.RTopic;
-import org.redisson.api.RedissonClient;
+import org.redisson.Redisson;
+import org.redisson.api.*;
 import org.redisson.api.listener.StatusListener;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 /**
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public class RedissonClusterManager implements ClusterManager {
     private RedissonClient redissonClient;
+
+    private ExecutorService executorService;
 
     private String prefix = "hsweb:task:";
 
@@ -32,8 +34,14 @@ public class RedissonClusterManager implements ClusterManager {
     }
 
     public RedissonClusterManager(RedissonClient redissonClient) {
-        this.redissonClient = redissonClient;
+        this(redissonClient, Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
     }
+
+    public RedissonClusterManager(RedissonClient redissonClient, ExecutorService executorService) {
+        this.redissonClient = redissonClient;
+        this.executorService = executorService;
+    }
+
 
     @Override
     public <T> T getObject(String name) {
@@ -61,9 +69,19 @@ public class RedissonClusterManager implements ClusterManager {
         return redissonClient.getSet(prefix + name);
     }
 
+    private final Map<String, Queue<?>> queueCache = new ConcurrentHashMap<>();
+
     @Override
-    public <T> BlockingQueue<T> getQueue(String name) {
-        return redissonClient.getBlockingQueue(prefix + name);
+    @SuppressWarnings("all")
+    public <T> Queue<T> getQueue(String name) {
+        return (Queue) queueCache.computeIfAbsent(name,
+                n -> new RedissonQueue<T>(redissonClient.getBlockingQueue(prefix + name), executorService) {
+                    @Override
+                    public void close() {
+                        super.close();
+                        queueCache.remove(name);
+                    }
+                });
     }
 
     @Override
@@ -82,7 +100,7 @@ public class RedissonClusterManager implements ClusterManager {
 
             @Override
             public long publish(T payload) {
-               return rTopic.publish(payload);
+                return rTopic.publish(payload);
             }
 
             @Override

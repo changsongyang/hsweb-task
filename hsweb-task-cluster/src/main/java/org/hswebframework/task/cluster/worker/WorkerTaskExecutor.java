@@ -17,8 +17,6 @@ public class WorkerTaskExecutor extends ClusterTaskExecutor {
 
     private TaskExecutor localExecutor;
 
-    private long topicId;
-
     public WorkerTaskExecutor(ClusterManager clusterManager, String workerId, TaskExecutor localExecutor) {
         super(clusterManager, workerId);
         this.localExecutor = localExecutor;
@@ -30,18 +28,17 @@ public class WorkerTaskExecutor extends ClusterTaskExecutor {
     }
 
     public void startup() {
-        topicId = getTaskTopic()
-                .subscribe(clusterTask ->//订阅任务
-                {
-                    log.info("worker [{}] accept cluster task ,taskId={},requestId={}",workerId,clusterTask.getTask().getId(),clusterTask.getRequestId());
-                        submitTask(clusterTask.getTask(), //提交到本地任务
-                                result -> responseTaskResult(clusterTask.getRequestId(), result));
+        getTaskQueue()
+                .consume(clusterTask -> {//订阅任务
+                    log.info("worker [{}] accept cluster task ,taskId={},requestId={}", workerId, clusterTask.getTask().getId(), clusterTask.getRequestId());
+                    submitTask(clusterTask.getTask(), //提交到本地任务
+                            result -> responseTaskResult(clusterTask.getRequestId(), result));
                 });
     }
 
 
     @Override
     public void shutdown(boolean force) {
-        getTaskTopic().unSubscribe(topicId);
+        localExecutor.shutdown(force);
     }
 }

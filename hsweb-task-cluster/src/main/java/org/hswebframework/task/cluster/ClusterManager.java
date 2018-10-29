@@ -21,7 +21,7 @@ public interface ClusterManager {
 
     <T> Set<T> getSet(String name);
 
-    <T> BlockingQueue<T> getQueue(String name);
+    <T> Queue<T> getQueue(String name);
 
     <T> Topic<T> getTopic(String name);
 

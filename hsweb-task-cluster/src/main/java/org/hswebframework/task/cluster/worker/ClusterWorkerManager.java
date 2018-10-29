@@ -3,6 +3,8 @@ package org.hswebframework.task.cluster.worker;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.Topic;
+import org.hswebframework.task.scheduler.WorkerSelectorRule;
+import org.hswebframework.task.scheduler.rules.RoundWorkerSelectorRule;
 import org.hswebframework.task.worker.TaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
 
@@ -10,6 +12,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * @author zhouhao
@@ -22,6 +25,8 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     private Map<String, WorkerInfo> clusterWorkerInfoList;
     private Topic<WorkerInfo>       workerJoinTopic;
     private Topic<WorkerInfo>       workerLeaveTopic;
+
+    private WorkerSelectorRule selectorRule = RoundWorkerSelectorRule.instance;
 
     private Map<String, TaskWorker> localWorker = new ConcurrentHashMap<>();
 
@@ -44,16 +49,16 @@ public class ClusterWorkerManager implements TaskWorkerManager {
 
     @Override
     public TaskWorker select(String group) {
-        return getAllWorker()
-                .stream()
-                .filter(worker -> {
-                    if (group == null || group.length() == 0) {
-                        return true;
-                    }
-                    return worker.getHealth() > 0 && Arrays.asList(worker.getGroups()).contains(group);
-                })
-                .max(Comparator.comparingInt(TaskWorker::getHealth))
-                .orElse(null);
+        return selectorRule
+                .select(getAllWorker()
+                        .stream()
+                        .filter(worker -> {
+                            if (group == null || group.length() == 0) {
+                                return true;
+                            }
+                            return worker.getHealth() > 0 && Arrays.asList(worker.getGroups()).contains(group);
+                        })
+                        .collect(Collectors.toList()));
     }
 
     @Override
@@ -69,6 +74,22 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     public void doRegister(TaskWorker worker) {
         worker.startup();
         localWorker.put(worker.getId(), worker);
+    }
+
+    @Override
+    public long onWorkerJoin(Consumer<TaskWorker> workerConsumer) {
+        long hash = System.identityHashCode(workerConsumer);
+
+
+        return hash;
+    }
+
+    @Override
+    public long onWorkerLeave(Consumer<TaskWorker> workerConsumer) {
+        long hash = System.identityHashCode(workerConsumer);
+
+
+        return hash;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package org.hswebframework.task.worker;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * job worker管理器,用于管理worker信息
@@ -44,6 +45,10 @@ public interface TaskWorkerManager {
      * @return 被注销的worker, 如果worker不存在则返回<code>null</code>
      */
     TaskWorker unregister(String id, boolean force);
+
+    long onWorkerJoin(Consumer<TaskWorker> workerConsumer);
+
+    long onWorkerLeave(Consumer<TaskWorker> workerConsumer);
 
     void startup();
 
