@@ -3,6 +3,7 @@ package org.hswebframework.task.scheduler.memory;
 import org.hswebframework.task.scheduler.SchedulerStatus;
 import org.hswebframework.task.scheduler.history.ScheduleHistory;
 import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
+import org.hswebframework.task.utils.IdUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,15 +29,30 @@ public class InMemoryScheduleHistoryRepository implements ScheduleHistoryReposit
     @Override
     public ScheduleHistory save(ScheduleHistory history) {
         if (history.getId() == null) {
-            history.setId(UUID.randomUUID().toString());
+            history.setId(IdUtils.newUUID());
         }
         histories.put(history.getId(), history);
         return history;
     }
 
     @Override
+    public ScheduleHistory findById(String id) {
+        return histories.get(id);
+    }
+
+    @Override
+    public List<ScheduleHistory> findByTaskId(String taskId) {
+        return histories.values().stream()
+                .filter(history -> history.getTaskId().equals(taskId))
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void changeStatus(String id, SchedulerStatus status) {
         Optional.ofNullable(histories.get(id))
-                .ifPresent(history -> history.setStatus(status));
+                .ifPresent(history -> {
+                    history.setStatus(status);
+                    history.setUpdateTime(System.currentTimeMillis());
+                });
     }
 }

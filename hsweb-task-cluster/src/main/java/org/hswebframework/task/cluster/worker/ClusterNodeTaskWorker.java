@@ -1,6 +1,7 @@
 package org.hswebframework.task.cluster.worker;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.worker.DefaultTaskWorker;
 import org.hswebframework.task.worker.executor.TaskExecutor;
@@ -20,8 +21,8 @@ public class ClusterNodeTaskWorker extends DefaultTaskWorker {
 
     private WorkerTaskExecutor workerTaskExecutor;
 
-    public ClusterNodeTaskWorker(String id, ClusterManager clusterManager, TaskExecutor executor) {
-        workerTaskExecutor = new WorkerTaskExecutor(clusterManager, id, executor);
+    public ClusterNodeTaskWorker(String id, TimeoutOperations timeoutOperations, ClusterManager clusterManager, TaskExecutor executor) {
+        workerTaskExecutor = new WorkerTaskExecutor(timeoutOperations,clusterManager, id, executor);
         super.setExecutor(workerTaskExecutor);
         super.setId(id);
         this.workerInfoMap = clusterManager.getMap("cluster:workers");
@@ -37,7 +38,7 @@ public class ClusterNodeTaskWorker extends DefaultTaskWorker {
                     WorkerInfo workerInfo = WorkerInfo.of(this);
                     workerInfo.setLastHeartbeatTime(System.currentTimeMillis());
                     workerInfoMap.put(workerInfo.getId(), workerInfo);
-                    Thread.sleep(10 * 1000);
+                    Thread.sleep(1000);
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                 }

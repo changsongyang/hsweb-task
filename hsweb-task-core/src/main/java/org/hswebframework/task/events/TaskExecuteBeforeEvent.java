@@ -7,5 +7,8 @@ import org.hswebframework.task.Task;
 @AllArgsConstructor
 @Getter
 public class TaskExecuteBeforeEvent {
-    private Task   task;
+
+    private String executionId;
+
+    private Task task;
 }

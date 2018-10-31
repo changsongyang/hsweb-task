@@ -3,6 +3,7 @@ package org.hswebframework.task.scheduler.memory;
 import org.hswebframework.task.Task;
 import org.hswebframework.task.TaskRepository;
 import org.hswebframework.task.TaskStatus;
+import org.hswebframework.task.utils.IdUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -31,7 +32,7 @@ public class InMemoryTaskRepository implements TaskRepository {
     @Override
     public Task save(Task task) {
         if (task.getId() == null) {
-            task.setId(UUID.randomUUID().toString());
+            task.setId(IdUtils.newUUID());
         }
         taskMap.put(task.getId(), task);
         return task;

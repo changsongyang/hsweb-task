@@ -3,6 +3,7 @@ package org.hswebframework.task.cluster.worker;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.Task;
 import org.hswebframework.task.TaskOperationResult;
+import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.worker.executor.TaskExecutor;
 
@@ -17,8 +18,8 @@ public class WorkerTaskExecutor extends ClusterTaskExecutor {
 
     private TaskExecutor localExecutor;
 
-    public WorkerTaskExecutor(ClusterManager clusterManager, String workerId, TaskExecutor localExecutor) {
-        super(clusterManager, workerId);
+    public WorkerTaskExecutor(TimeoutOperations timeoutOperations, ClusterManager clusterManager, String workerId, TaskExecutor localExecutor) {
+        super(timeoutOperations,clusterManager, workerId);
         this.localExecutor = localExecutor;
     }
 

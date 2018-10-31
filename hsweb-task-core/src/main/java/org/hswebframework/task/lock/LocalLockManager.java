@@ -2,6 +2,7 @@ package org.hswebframework.task.lock;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.task.utils.IdUtils;
 
 import java.util.Map;
 import java.util.UUID;
@@ -23,7 +24,7 @@ public class LocalLockManager implements LockManager {
     @Override
     @SneakyThrows
     public Lock tryGetLock(String lockName, long timeout, TimeUnit timeUnit) {
-        String id = UUID.randomUUID().toString();
+        String id = IdUtils.newUUID();
 
         log.debug("try lock [{}],id:{}", lockName, id);
         Semaphore semaphore = semaphoreMap.computeIfAbsent(lockName, name -> new Semaphore(1));

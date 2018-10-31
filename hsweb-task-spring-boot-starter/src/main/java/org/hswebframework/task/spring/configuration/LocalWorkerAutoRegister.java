@@ -1,5 +1,6 @@
 package org.hswebframework.task.spring.configuration;
 
+import org.hswebframework.task.utils.IdUtils;
 import org.hswebframework.task.worker.DefaultTaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
 import org.hswebframework.task.worker.executor.TaskExecutor;
@@ -34,7 +35,7 @@ public class LocalWorkerAutoRegister implements CommandLineRunner {
         worker.setId(workerProperties.getId());
         worker.setGroups(workerProperties.getGroups());
         worker.setHost(workerProperties.getHost());
-        worker.setRegisterId(UUID.randomUUID().toString());
+        worker.setRegisterId(IdUtils.newUUID());
         worker.setName(workerProperties.getName());
         taskWorkerManager.register(worker);
     }

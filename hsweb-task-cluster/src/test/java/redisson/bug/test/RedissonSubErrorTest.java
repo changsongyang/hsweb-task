@@ -1,5 +1,6 @@
 package redisson.bug.test;
 
+import org.hswebframework.task.utils.IdUtils;
 import org.redisson.Redisson;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
@@ -52,7 +53,7 @@ public class RedissonSubErrorTest {
         });
 
         executorService.scheduleAtFixedRate(() -> {
-            String msgId = UUID.randomUUID().toString();
+            String msgId = IdUtils.newUUID();
             try {
                 System.out.print("consume [" + msgId+"] times "+requestCounter.incrementAndGet());
                 consume(msgId, msg->{

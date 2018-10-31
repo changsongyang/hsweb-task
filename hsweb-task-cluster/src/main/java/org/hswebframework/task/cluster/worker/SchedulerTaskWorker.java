@@ -1,5 +1,6 @@
 package org.hswebframework.task.cluster.worker;
 
+import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.worker.TaskWorker;
 import org.hswebframework.task.worker.WorkerStatus;
@@ -25,9 +26,12 @@ public class SchedulerTaskWorker implements TaskWorker {
 
     private volatile long lastCacheTime;
 
-    public SchedulerTaskWorker(ClusterManager clusterManager, String id) {
+    private TimeoutOperations timeoutOperations;
+
+    public SchedulerTaskWorker(TimeoutOperations timeoutOperations, ClusterManager clusterManager, String id) {
         this.clusterManager = clusterManager;
         this.id = id;
+        this.timeoutOperations = timeoutOperations;
     }
 
     protected WorkerInfo getWorkerInfo() {
@@ -40,6 +44,7 @@ public class SchedulerTaskWorker implements TaskWorker {
         }
         return cache;
     }
+
 
     @Override
     public String getId() {
@@ -78,11 +83,14 @@ public class SchedulerTaskWorker implements TaskWorker {
 
     @Override
     public byte getHealth() {
-        return getWorkerInfo().getHealth();
+        return getStatus().getHealthScore();
     }
 
     @Override
     public WorkerStatus getStatus() {
+        if (System.currentTimeMillis() - getWorkerInfo().getLastHeartbeatTime() > 1100) {
+            return WorkerStatus.offline;
+        }
         return getWorkerInfo().getStatus();
     }
 
@@ -100,7 +108,7 @@ public class SchedulerTaskWorker implements TaskWorker {
     @Override
     public void startup() {
         if (taskExecutor == null) {
-            taskExecutor = new SchedulerTaskExecutor(clusterManager, getId());
+            taskExecutor = new SchedulerTaskExecutor(timeoutOperations, clusterManager, getId());
         }
         if (taskInfoMap == null) {
             taskInfoMap = clusterManager.getMap("cluster:workers");

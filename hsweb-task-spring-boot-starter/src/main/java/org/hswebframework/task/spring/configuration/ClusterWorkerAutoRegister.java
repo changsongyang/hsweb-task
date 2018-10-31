@@ -1,7 +1,9 @@
 package org.hswebframework.task.spring.configuration;
 
+import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.worker.ClusterNodeTaskWorker;
+import org.hswebframework.task.utils.IdUtils;
 import org.hswebframework.task.worker.DefaultTaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
 import org.hswebframework.task.worker.executor.TaskExecutor;
@@ -30,16 +32,19 @@ public class ClusterWorkerAutoRegister implements CommandLineRunner {
     @Autowired
     private ClusterManager clusterManager;
 
+    @Autowired
+    private TimeoutOperations timeoutOperations;
+
     @Override
     public void run(String... args) {
         TaskProperties.WorkerProperties workerProperties = taskProperties.getWorker();
         workerProperties.validate();
 
-        ClusterNodeTaskWorker worker = new ClusterNodeTaskWorker(workerProperties.getId(), clusterManager, taskExecutor);
+        ClusterNodeTaskWorker worker = new ClusterNodeTaskWorker(workerProperties.getId(), timeoutOperations, clusterManager, taskExecutor);
         worker.setId(workerProperties.getId());
         worker.setGroups(workerProperties.getGroups());
         worker.setHost(workerProperties.getHost());
-        worker.setRegisterId(UUID.randomUUID().toString());
+        worker.setRegisterId(IdUtils.newUUID());
         worker.setName(workerProperties.getName());
         taskWorkerManager.register(worker);
     }

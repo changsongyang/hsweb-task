@@ -49,6 +49,8 @@ public class ScheduleHistory {
 
     private long createTime;
 
+    private long updateTime;
+
     private SchedulerStatus status;
 
     private Map<String, Object> schedulerConfiguration;

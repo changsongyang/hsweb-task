@@ -9,11 +9,13 @@ package org.hswebframework.task.scheduler;
  */
 public interface TaskScheduler {
 
-    void schedule(String jobId, Scheduler scheduler);
+    String schedule(String jobId, Scheduler scheduler);
 
-    void cancel(String historyId, boolean force);
+    void cancel(String scheduleId, boolean force);
 
-    boolean pause(String historyId);
+    boolean pause(String scheduleId);
+
+    void start(String scheduleId);
 
     void shutdown(boolean force);
 

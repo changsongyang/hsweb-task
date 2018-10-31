@@ -1,6 +1,8 @@
 package org.hswebframework.task.cluster.redisson
 
 import org.hswebframework.task.DefaultEventSubscriberPublisher
+import org.hswebframework.task.ThreadPoolTimeoutOperations
+import org.hswebframework.task.TimeoutOperations
 import org.hswebframework.task.cluster.ClusterManager
 import org.hswebframework.task.cluster.worker.ClusterNodeTaskWorker
 import org.hswebframework.task.cluster.worker.ClusterWorkerManager
@@ -15,6 +17,7 @@ import org.hswebframework.task.scheduler.TaskScheduler
 import org.hswebframework.task.scheduler.memory.InMemoryJobRepository
 import org.hswebframework.task.scheduler.memory.InMemoryScheduleHistoryRepository
 import org.hswebframework.task.scheduler.memory.InMemoryTaskRepository
+import org.hswebframework.task.utils.IdUtils
 import org.hswebframework.task.worker.TaskWorkerManager
 import org.hswebframework.task.worker.executor.RunnableTaskBuilder
 import org.hswebframework.task.worker.executor.supports.DefaultRunnableTaskBuilder
@@ -45,13 +48,15 @@ class FullFunctionTest extends Specification {
 
     JobRepository jobRepository;
 
+    TimeoutOperations timeoutOperations;
+
     def setup() {
         def redisson = RedissonUtils.createRedissonClient()
-
+        timeoutOperations = new ThreadPoolTimeoutOperations(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
         clusterManager = new RedissonClusterManager(redisson)
-        schedulerWorkerManager = new ClusterWorkerManager(clusterManager)
-        schedulerWorkerManager.startup()
-        workerManager = new ClusterWorkerManager(clusterManager)
+        schedulerWorkerManager = new ClusterWorkerManager(timeoutOperations, clusterManager)
+        //schedulerWorkerManager.startup()
+        workerManager = new ClusterWorkerManager(timeoutOperations, clusterManager)
         workerManager.startup()
         taskBuilder = new DefaultRunnableTaskBuilder()
         taskBuilder.addProvider(new JavaMethodInvokeTaskProvider())
@@ -69,15 +74,20 @@ class FullFunctionTest extends Specification {
         scheduler.setLockManager(new LocalLockManager())
         scheduler.setTaskFactory(new DefaultTaskFactory())
         scheduler.setTaskWorkerManager(schedulerWorkerManager)
+        scheduler.setAutoShutdown(false)
         scheduler.startup()
+    }
+
+    def cleanup() {
+        scheduler.shutdownNow();
     }
 
     def "测试注册注销"() {
         given: "在worker节点注册"
-        def worker = new ClusterNodeTaskWorker("test", clusterManager as ClusterManager, new ThreadPoolTaskExecutor(taskBuilder));
+        def worker = new ClusterNodeTaskWorker("test", timeoutOperations, clusterManager as ClusterManager, new ThreadPoolTaskExecutor(taskBuilder));
         worker.setGroups(["default"] as String[])
         worker.setName("测试")
-        worker.setRegisterId(UUID.randomUUID().toString())
+        worker.setRegisterId(IdUtils.newUUID())
         //在worker节点注册一个worker
         workerManager.register(worker)
         Thread.sleep(100)
@@ -92,10 +102,10 @@ class FullFunctionTest extends Specification {
 
     def "测试任务调度"() {
         given: "注册worker"
-        def worker = new ClusterNodeTaskWorker("worker-0001", clusterManager as ClusterManager, new ThreadPoolTaskExecutor(taskBuilder));
+        def worker = new ClusterNodeTaskWorker("worker-0001", timeoutOperations, clusterManager as ClusterManager, new ThreadPoolTaskExecutor(taskBuilder));
         worker.setGroups(["worker"] as String[])
         worker.setName("调度测试")
-        worker.setRegisterId(UUID.randomUUID().toString())
+        worker.setRegisterId(IdUtils.newUUID())
         workerManager.register(worker)
         Thread.sleep(200)
         when: "scheduler节点已成功注册worker"
@@ -105,8 +115,9 @@ class FullFunctionTest extends Specification {
                 id: "testJob",
                 taskType: "java-method",
                 content: "org.hswebframework.task.cluster.redisson.TestJob.execute",
-                executeTimeOut: 100000,
-                parallel: true
+                executeTimeOut: 1000,
+                parallel: true,
+                group: "worker"
         ))
         scheduler.schedule("testJob", Schedulers.period(Executors.newScheduledThreadPool(10), 100, 100, TimeUnit.MILLISECONDS))
 

@@ -2,6 +2,7 @@ package org.hswebframework.task.scheduler.memory;
 
 import org.hswebframework.task.job.JobDetail;
 import org.hswebframework.task.job.JobRepository;
+import org.hswebframework.task.utils.IdUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,7 +29,7 @@ public class InMemoryJobRepository implements JobRepository {
     public JobDetail save(JobDetail detail) {
 
         if (detail.getId() == null) {
-            detail.setId(UUID.randomUUID().toString());
+            detail.setId(IdUtils.newUUID());
         }
         jobs.put(detail.getId(), detail);
         return detail;

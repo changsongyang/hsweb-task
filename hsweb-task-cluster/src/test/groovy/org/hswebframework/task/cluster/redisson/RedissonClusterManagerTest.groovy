@@ -48,10 +48,10 @@ class RedissonClusterManagerTest extends Specification {
     def "测试Queue"() {
         given:
         def queue = clusterManager.getQueue("test-queue");
-        queue.clear()
+        queue.close()
         new Thread({
             Thread.sleep(1000)
-            queue.offer("1234")
+            queue.add("1234")
         }).start()
         def val = queue.poll(2000,TimeUnit.MILLISECONDS);
         expect:

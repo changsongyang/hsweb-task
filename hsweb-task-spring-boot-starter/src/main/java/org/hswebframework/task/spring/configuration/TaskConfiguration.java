@@ -1,8 +1,6 @@
 package org.hswebframework.task.spring.configuration;
 
-import org.hswebframework.task.EventPublisher;
-import org.hswebframework.task.TaskFactory;
-import org.hswebframework.task.TaskRepository;
+import org.hswebframework.task.*;
 import org.hswebframework.task.job.JobRepository;
 import org.hswebframework.task.lock.LocalLockManager;
 import org.hswebframework.task.lock.LockManager;
@@ -22,6 +20,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClas
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.concurrent.Executors;
 
 /**
  * @author zhouhao
@@ -71,4 +71,8 @@ public class TaskConfiguration {
         return new DefaultTaskFactory();
     }
 
+    @Bean
+    public TimeoutOperations timeoutOperations() {
+        return new ThreadPoolTimeoutOperations(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
+    }
 }

@@ -3,6 +3,7 @@ package org.hswebframework.task.worker.executor.supports;
 import org.hswebframework.task.Task;
 import org.hswebframework.task.TaskOperationResult;
 import org.hswebframework.task.TaskStatus;
+import org.hswebframework.task.utils.IdUtils;
 import org.hswebframework.task.worker.executor.ExecuteContext;
 import org.hswebframework.task.worker.executor.RunnableTask;
 
@@ -30,7 +31,7 @@ public class DefaultRunnableTask implements RunnableTask {
     public DefaultRunnableTask(Task task, TaskRunner runner) {
         this.task = task;
         this.runner = runner;
-        this.id = UUID.randomUUID().toString();
+        this.id = IdUtils.newUUID();
     }
 
     @Override

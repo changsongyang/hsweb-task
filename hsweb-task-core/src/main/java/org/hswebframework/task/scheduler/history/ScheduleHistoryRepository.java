@@ -14,5 +14,9 @@ public interface ScheduleHistoryRepository {
 
     ScheduleHistory save(ScheduleHistory history);
 
+    ScheduleHistory findById(String id);
+
+    List<ScheduleHistory> findByTaskId(String taskId);
+
     void changeStatus(String id, SchedulerStatus status);
 }

@@ -11,6 +11,7 @@ import org.hswebframework.task.lock.Lock;
 import org.hswebframework.task.lock.LockManager;
 import org.hswebframework.task.scheduler.history.ScheduleHistory;
 import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
+import org.hswebframework.task.utils.IdUtils;
 import org.hswebframework.task.worker.TaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
 
@@ -77,10 +78,10 @@ public class DefaultTaskScheduler implements TaskScheduler {
     private Map<String, RunningScheduler> runningSchedulerMap = new ConcurrentHashMap<>();
 
     class RunningScheduler {
-        private volatile Scheduler scheduler;
-        private volatile String    scheduleId;
-        private volatile String    historyId;
-
+        private volatile Scheduler  scheduler;
+        private volatile String     scheduleId;
+        private volatile String     historyId;
+        private          Task       task;
         private volatile AtomicLong errorCounter = new AtomicLong();
 
         void cancel(boolean force) {
@@ -88,10 +89,18 @@ public class DefaultTaskScheduler implements TaskScheduler {
         }
 
         private boolean doError(String errorName, TaskStatus status) {
+            long retryTimes = task.getJob().getRetryTimes();
+            List<String> retryWithout = task.getJob().getRetryWithout();
 
-            errorCounter.incrementAndGet();
-
-            return true;
+            if (retryWithout != null && !retryWithout.isEmpty()) {
+                if (retryWithout.stream().anyMatch(name -> errorName.endsWith(name) || errorName.equals(status.name()))) {
+                    return false;
+                }
+            }
+            if (status == TaskStatus.noWorker) {
+                return false;
+            }
+            return retryTimes >= 0 && errorCounter.incrementAndGet() > retryTimes;
         }
     }
 
@@ -104,10 +113,9 @@ public class DefaultTaskScheduler implements TaskScheduler {
         log.debug("shutdown scheduler {}", this);
     }
 
-
     public void startup() {
         if (startup) {
-            throw new UnsupportedOperationException("task already startup with " + startupTime);
+            throw new UnsupportedOperationException("task scheduler already startup with " + startupTime);
         }
         if (autoShutdown) {
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownNow));
@@ -116,14 +124,21 @@ public class DefaultTaskScheduler implements TaskScheduler {
         startupTime = new Date();
         startup = true;
         //重启未执行的任务
-        List<ScheduleHistory> histories = historyRepository
-                .findBySchedulerId(getSchedulerId(), SchedulerStatus.noWorker, SchedulerStatus.running, SchedulerStatus.pause);
+        List<ScheduleHistory> histories = historyRepository.findBySchedulerId(getSchedulerId(),
+                SchedulerStatus.noWorker,
+                SchedulerStatus.running,
+                SchedulerStatus.pause);
         log.debug("start up scheduler {}, auto start {} tasks", this, histories.size());
-        for (ScheduleHistory history : histories) {
-            Scheduler scheduler = schedulerFactory.create(history.getSchedulerConfiguration());
-            Task task = taskRepository.findById(history.getTaskId());
-            doSchedule(task, history.getId(), scheduler);
-        }
+        histories.forEach(this::doStart);
+        taskWorkerManager.onWorkerJoin(worker -> {
+            restartNoWorkerTask();
+        });
+    }
+
+    protected void restartNoWorkerTask() {
+        List<ScheduleHistory> histories = historyRepository.findBySchedulerId(getSchedulerId(), SchedulerStatus.noWorker);
+        log.debug("restart no worker {} tasks", histories.size());
+        histories.forEach(this::doStart);
     }
 
     protected void logExecuteResult(TaskOperationResult result) {
@@ -144,7 +159,8 @@ public class DefaultTaskScheduler implements TaskScheduler {
         RunningScheduler runningScheduler = new RunningScheduler();
         runningScheduler.scheduleId = task.getScheduleId();
         runningScheduler.historyId = historyId;
-        runningSchedulerMap.put(task.getScheduleId(), runningScheduler);
+        runningScheduler.task = task;
+        runningSchedulerMap.put(historyId, runningScheduler);
         historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.running);
 
         runningScheduler.scheduler = scheduler
@@ -177,24 +193,25 @@ public class DefaultTaskScheduler implements TaskScheduler {
                             Lock finalLock = lock;
                             //修改状态
                             changeTaskStatus(task, TaskStatus.running);
-                            eventPublisher.publish(new TaskExecuteBeforeEvent(task));
                             //提交任务给worker
-                            worker.getExecutor().submitTask(task, result -> {
-                                try {
-                                    eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
-                                    changeTaskStatus(task, result.getStatus());
-                                    logExecuteResult(result);
-                                } finally {
-                                    finalLock.release();
-                                    if (!result.isSuccess()) {
-                                        if (runningScheduler.doError(result.getErrorName(), result.getStatus())) {
-                                            context.next(false);
+                            String id = worker.getExecutor()
+                                    .submitTask(task, result -> {
+                                        try {
+                                            eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
+                                            changeTaskStatus(task, result.getStatus());
+                                            logExecuteResult(result);
+                                        } finally {
+                                            finalLock.release();
+                                            if (!result.isSuccess()) {
+                                                if (runningScheduler.doError(result.getErrorName(), result.getStatus())) {
+                                                    context.next(false);
+                                                }
+                                            } else {
+                                                context.next(true);
+                                            }
                                         }
-                                    } else {
-                                        context.next(true);
-                                    }
-                                }
-                            });
+                                    });
+                            eventPublisher.publish(new TaskExecuteBeforeEvent(id, task));
                         } else {
                             lock.release();
                             changeTaskStatus(task, TaskStatus.noWorker);
@@ -218,14 +235,14 @@ public class DefaultTaskScheduler implements TaskScheduler {
     }
 
     @Override
-    public void schedule(String jobId, Scheduler scheduler) {
+    public String schedule(String jobId, Scheduler scheduler) {
         JobDetail job = jobRepository.findById(jobId);
         if (job == null) {
             throw new NullPointerException("job [" + jobId + "] not exists");
         }
         //创建Task
         Task task = taskFactory.create(job);
-        String scheduleId = schedulerId + "_" + UUID.randomUUID().toString();
+        String scheduleId = schedulerId + "_" + IdUtils.newUUID();
         task.setScheduleId(scheduleId);
         task.setSchedulerId(schedulerId);
         task.setStatus(TaskStatus.preparing);
@@ -233,7 +250,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
         eventPublisher.publish(new TaskCreatedEvent(task));
         //记录日志
         ScheduleHistory scheduleHistory = new ScheduleHistory();
-        scheduleHistory.setId(UUID.randomUUID().toString());
+        scheduleHistory.setId(IdUtils.newUUID());
         scheduleHistory.setCreateTime(System.currentTimeMillis());
         scheduleHistory.setJobId(jobId);
         scheduleHistory.setJobName(job.getName());
@@ -245,6 +262,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
         //执行调度
         doSchedule(task, scheduleHistory.getId(), scheduler);
+        return scheduleHistory.getId();
     }
 
     @Override
@@ -263,6 +281,22 @@ public class DefaultTaskScheduler implements TaskScheduler {
             return true;
         }
         return false;
+    }
+
+    protected void doStart(ScheduleHistory history) {
+        Task task = taskRepository.findById(history.getTaskId());
+        task.setSchedulerId(getSchedulerId());
+        taskRepository.save(task);
+        doSchedule(task, history.getId(), schedulerFactory.create(history.getSchedulerConfiguration()));
+    }
+
+    @Override
+    public void start(String scheduleId) {
+        ScheduleHistory history = historyRepository.findById(scheduleId);
+        if (history == null) {
+            throw new NullPointerException("不存在的调度配置");
+        }
+        doStart(history);
     }
 
     @Override

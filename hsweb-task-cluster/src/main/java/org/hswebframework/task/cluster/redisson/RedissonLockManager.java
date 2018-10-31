@@ -4,6 +4,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.lock.Lock;
 import org.hswebframework.task.lock.LockManager;
+import org.hswebframework.task.utils.IdUtils;
 import org.redisson.api.RSemaphore;
 import org.redisson.api.RedissonClient;
 
@@ -31,7 +32,7 @@ public class RedissonLockManager implements LockManager {
     @Override
     @SneakyThrows
     public Lock tryGetLock(String lockName, long timeout, TimeUnit timeUnit) {
-        String id = UUID.randomUUID().toString();
+        String id = IdUtils.newUUID();
 
         RSemaphore semaphore = rSemaphoreMap.computeIfAbsent(lockName, key -> {
             RSemaphore rSemaphore = redissonClient.getSemaphore(key);

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -75,15 +76,17 @@ public class RedissonQueue<T> implements Queue<T> {
 
     @Override
     @SneakyThrows
-    public T take() {
-        return realQueue.take();
+    public T poll(long timeout, TimeUnit timeUnit) {
+        return realQueue.poll(timeout, timeUnit);
     }
 
     @Override
     public void close() {
         consumers.clear();
-        realQueue.delete();
+        realQueue.expire(1, TimeUnit.MILLISECONDS);
+//        realQueue.delete();
         running = false;
-        consumeFuture.cancel(false);
+        if (consumeFuture != null)
+            consumeFuture.cancel(false);
     }
 }

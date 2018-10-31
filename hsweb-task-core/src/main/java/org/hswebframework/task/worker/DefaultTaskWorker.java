@@ -2,6 +2,7 @@ package org.hswebframework.task.worker;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.task.utils.IdUtils;
 import org.hswebframework.task.worker.executor.TaskExecutor;
 
 import java.util.Objects;
@@ -59,7 +60,7 @@ public class DefaultTaskWorker implements TaskWorker {
     @Override
     public void startup() {
         if (registerId == null) {
-            registerId = UUID.randomUUID().toString();
+            registerId = IdUtils.newUUID();
         }
         validate();
         startupTime = System.currentTimeMillis();

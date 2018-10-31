@@ -1,5 +1,6 @@
 package org.hswebframework.task.cluster;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -11,7 +12,7 @@ public interface Queue<T> {
 
     void consume(Consumer<T> consumer);
 
-    T take();
+    T poll(long timeout, TimeUnit timeUnit);
 
     void close();
 }

@@ -1,5 +1,6 @@
 package org.hswebframework.task.spring.configuration;
 
+import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.worker.ClusterNodeTaskWorker;
 import org.hswebframework.task.cluster.worker.WorkerTaskExecutor;
@@ -36,10 +37,14 @@ public class ClusterWorkerConfiguration {
 
     @Bean
     public TaskExecutor taskExecutor(
+            TimeoutOperations timeoutOperations,
             TaskProperties properties,
             RunnableTaskBuilder taskBuilder,
             ClusterManager clusterManager) {
 
-        return new WorkerTaskExecutor(clusterManager, properties.getWorker().validate().getId(), new ThreadPoolTaskExecutor(taskBuilder));
+        return new WorkerTaskExecutor(timeoutOperations,
+                clusterManager,
+                properties.getWorker().validate().getId(),
+                new ThreadPoolTaskExecutor(taskBuilder));
     }
 }

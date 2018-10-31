@@ -1,6 +1,7 @@
 package org.hswebframework.task.cluster.worker;
 
 import lombok.extern.slf4j.Slf4j;
+import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.Topic;
 import org.hswebframework.task.scheduler.WorkerSelectorRule;
@@ -25,13 +26,18 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     private Map<String, WorkerInfo> clusterWorkerInfoList;
     private Topic<WorkerInfo>       workerJoinTopic;
     private Topic<WorkerInfo>       workerLeaveTopic;
+    private TimeoutOperations       timeoutOperations;
+
+    private boolean running = false;
 
     private WorkerSelectorRule selectorRule = RoundWorkerSelectorRule.instance;
 
     private Map<String, TaskWorker> localWorker = new ConcurrentHashMap<>();
 
-    public ClusterWorkerManager(ClusterManager clusterManager) {
+    public ClusterWorkerManager(TimeoutOperations timeoutOperations,
+                                ClusterManager clusterManager) {
         this.clusterManager = clusterManager;
+        this.timeoutOperations = timeoutOperations;
         clusterWorkerInfoList = clusterManager.getMap("cluster:workers");
         workerJoinTopic = clusterManager.getTopic("cluster:worker:join");
         workerLeaveTopic = clusterManager.getTopic("cluster:worker:leave");
@@ -72,8 +78,8 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     }
 
     public void doRegister(TaskWorker worker) {
-        worker.startup();
         localWorker.put(worker.getId(), worker);
+        worker.startup();
     }
 
     @Override
@@ -103,7 +109,6 @@ public class ClusterWorkerManager implements TaskWorkerManager {
             workerLeaveTopic.publish(workerInfo);
             clusterWorkerInfoList.remove(id);
             localWorker.remove(id);
-
         }
         return worker;
     }
@@ -119,19 +124,22 @@ public class ClusterWorkerManager implements TaskWorkerManager {
 
     @Override
     public void startup() {
-
+        if (running) {
+            return;
+        }
+        running = true;
         Consumer<WorkerInfo> joinWorker = workerInfo -> {
-            if (System.currentTimeMillis() - workerInfo.getLastHeartbeatTime() > TimeUnit.SECONDS.toMillis(30)) {
-                clusterWorkerInfoList.remove(workerInfo.getId());
-                log.debug("worker[{}] is dead ", workerInfo.getId());
-                return;
-            }
             TaskWorker oldWorker = localWorker.get(workerInfo.getId());
             if (oldWorker != null && !(oldWorker instanceof SchedulerTaskWorker)) {
                 return;
             }
+            if (System.currentTimeMillis() - workerInfo.getLastHeartbeatTime() > TimeUnit.SECONDS.toMillis(5)) {
+                clusterWorkerInfoList.remove(workerInfo.getId());
+                log.debug("worker[{}] is dead ", workerInfo.getId());
+                return;
+            }
             log.debug("worker join: {}", workerInfo);
-            SchedulerTaskWorker worker = new SchedulerTaskWorker(clusterManager, workerInfo.getId());
+            SchedulerTaskWorker worker = new SchedulerTaskWorker(timeoutOperations, clusterManager, workerInfo.getId());
             doRegister(worker);
         };
         //worker join
