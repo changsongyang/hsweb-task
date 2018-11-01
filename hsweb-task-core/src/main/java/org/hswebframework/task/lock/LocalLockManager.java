@@ -32,7 +32,7 @@ public class LocalLockManager implements LockManager {
         boolean success = semaphore.tryAcquire(timeout, timeUnit);
 
         if (!success) {
-            throw new TimeoutException("lock " + lockName + " timeout with " + timeout + timeUnit.name());
+            throw new TimeoutException("lock [" + lockName + "] timeout " + timeout + timeUnit.name());
         }
         return () -> {
             semaphore.release();

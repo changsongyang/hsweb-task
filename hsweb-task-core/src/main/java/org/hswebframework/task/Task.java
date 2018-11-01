@@ -17,8 +17,6 @@ public class Task {
 
     private String id;
 
-    private String scheduleId;
-
     private String schedulerId;
 
     private String jobId;

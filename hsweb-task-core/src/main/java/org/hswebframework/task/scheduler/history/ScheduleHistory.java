@@ -24,12 +24,9 @@ public class ScheduleHistory {
     private String schedulerId;
 
     /**
-     * 调度ID,同一次调度请求,调度ID相同
-     */
-    private String scheduleId;
-
-    /**
      * 作业ID
+     *
+     * @see JobDetail#id
      */
     private String jobId;
 

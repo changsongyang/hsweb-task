@@ -1,6 +1,7 @@
 package org.hswebframework.task.scheduler;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.*;
@@ -16,10 +17,7 @@ import org.hswebframework.task.worker.TaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
 import org.hswebframework.task.worker.WorkerStatus;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +42,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     @Getter
     @Setter
+    @NonNull
     private JobRepository jobRepository;
 
     @Getter
@@ -82,14 +81,13 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     class RunningScheduler {
         private volatile Scheduler scheduler;
-        private volatile String    scheduleId;
-        private volatile String    historyId;
+        private volatile String historyId;
 
-        private volatile String            workerId;
+        private volatile String workerId;
         private volatile Callable<Boolean> cancelRunnable;
-        private volatile ScheduleContext   context;
+        private volatile ScheduleContext context;
 
-        private          Task       task;
+        private Task task;
         private volatile AtomicLong errorCounter = new AtomicLong();
 
         void resetRunning() {
@@ -98,8 +96,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
             workerId = null;
         }
 
-        void cancel(boolean force) {
-            scheduler.cancel(force);
+        void tryCancelTask() {
             if (cancelRunnable != null) {
                 try {
                     cancelRunnable.call();
@@ -107,6 +104,21 @@ public class DefaultTaskScheduler implements TaskScheduler {
                     log.error(e.getMessage(), e);
                 }
             }
+        }
+
+        void stop(boolean force) {
+            if (force) {
+                tryCancelTask();
+            }
+            scheduler.stop(force);
+            resetRunning();
+        }
+
+        void cancel(boolean force) {
+            if (force) {
+                tryCancelTask();
+            }
+            scheduler.cancel(force);
             resetRunning();
         }
 
@@ -128,7 +140,11 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     public void shutdown(boolean force) {
         for (RunningScheduler runningScheduler : runningSchedulerMap.values()) {
-            runningScheduler.scheduler.stop(force);
+            try {
+                runningScheduler.stop(force);
+            } catch (Exception e) {
+                log.error(e.getMessage(), e);
+            }
         }
         taskWorkerManager.shutdown();
         lockManager.releaseALl();
@@ -139,6 +155,16 @@ public class DefaultTaskScheduler implements TaskScheduler {
         if (startup) {
             throw new UnsupportedOperationException("task scheduler already startup with " + startupTime);
         }
+        Objects.requireNonNull(getSchedulerId(), "schedulerId can not be null");
+        Objects.requireNonNull(getEventPublisher(), "schedulerId can not be null");
+        Objects.requireNonNull(getLockManager(), "lockManager can not be null");
+        Objects.requireNonNull(getTaskRepository(), "taskRepository can not be null");
+        Objects.requireNonNull(getTaskWorkerManager(), "taskWorkerManager can not be null");
+        Objects.requireNonNull(getTaskFactory(), "taskFactory can not be null");
+        Objects.requireNonNull(getHistoryRepository(), "historyRepository can not be null");
+        Objects.requireNonNull(getSchedulerFactory(), "schedulerFactory can not be null");
+        Objects.requireNonNull(getJobRepository(), "jobRepository can not be null");
+
         if (autoShutdown) {
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownNow));
         }
@@ -170,6 +196,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                 }
             }
         });
+        //有worker加入后尝试重启之前状态为noWorker的任务
         taskWorkerManager.onWorkerJoin(worker -> restartNoWorkerTask());
     }
 
@@ -212,7 +239,6 @@ public class DefaultTaskScheduler implements TaskScheduler {
         }
 
         RunningScheduler runningScheduler = new RunningScheduler();
-        runningScheduler.scheduleId = task.getScheduleId();
         runningScheduler.historyId = historyId;
         runningScheduler.task = task;
 
@@ -223,7 +249,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                 .onCancel(() -> {
                     taskRepository.changeStatus(task.getId(), TaskStatus.cancel);
                     historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.cancel);
-                    runningSchedulerMap.remove(runningScheduler.scheduleId);
+                    runningSchedulerMap.remove(runningScheduler.historyId);
                 })
                 .onPause(() -> {
                     taskRepository.changeStatus(task.getId(), TaskStatus.suspend);
@@ -233,7 +259,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                     //调度器停止时,中断任务,已中断的任务才能重新被其他调度器获取到
                     taskRepository.changeStatus(task.getId(), TaskStatus.interrupt);
                     historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.stop);
-                    runningSchedulerMap.remove(runningScheduler.scheduleId);
+                    runningSchedulerMap.remove(runningScheduler.historyId);
                 })
                 .onTriggered((context) -> {
                     Lock lock = Lock.fake;
@@ -307,25 +333,31 @@ public class DefaultTaskScheduler implements TaskScheduler {
         if (null == task) {
             throw new NullPointerException("task [" + taskId + "] not exists");
         }
-        List<ScheduleHistory> histories = historyRepository.findByTaskId(taskId);
-        ScheduleHistory history;
-        if (histories == null || histories.isEmpty()) {
-            history = saveScheduledHistory(task, scheduler);
-        } else {
-            history = histories.stream().filter(his ->
-                    //同一个调度器或者是是可以竞争调度的任务
-                    his.getSchedulerId().equals(getSchedulerId()) || his.getStatus().isContestable())
-                    .findFirst()
-                    .orElseThrow(UnsupportedOperationException::new);
-            //不是同一个调度id获取的任务
-            if (!history.getSchedulerId().equals(getSchedulerId())) {
-                history.setSchedulerId(getSchedulerId());
-                historyRepository.save(history);
+        Lock lock = lockManager.tryGetLock("schedule-task-lock:" + taskId, 10, TimeUnit.SECONDS);
+        try {
+            List<ScheduleHistory> histories = historyRepository.findByTaskId(taskId);
+            ScheduleHistory history;
+            //第一次调度
+            if (histories == null || histories.isEmpty()) {
+                history = saveScheduledHistory(task, scheduler);
+            } else {
+                history = histories.stream().filter(his ->
+                        //同一个调度器或者是可以竞争调度的任务
+                        his.getSchedulerId().equals(getSchedulerId()) || his.getStatus().isContestable())
+                        .findFirst()
+                        .orElseThrow(() -> new UnsupportedOperationException("other task scheduler are running this task:" + taskId));
+                //不是同一个调度器获取的任务,则抢过来进行调度
+                if (!history.getSchedulerId().equals(getSchedulerId())) {
+                    history.setSchedulerId(getSchedulerId());
+                    historyRepository.save(history);
+                }
             }
-        }
 
-        doSchedule(task, history.getId(), scheduler);
-        return history.getId();
+            doSchedule(task, history.getId(), scheduler);
+            return history.getId();
+        } finally {
+            lock.release();
+        }
     }
 
     protected ScheduleHistory saveScheduledHistory(Task task, Scheduler scheduler) {
@@ -335,9 +367,8 @@ public class DefaultTaskScheduler implements TaskScheduler {
         scheduleHistory.setJobId(task.getJobId());
         scheduleHistory.setJobName(task.getJob().getName());
         scheduleHistory.setTaskId(task.getId());
-        scheduleHistory.setSchedulerConfiguration(scheduler.getConfiguration());
-        scheduleHistory.setScheduleId(task.getScheduleId());
-        scheduleHistory.setSchedulerId(schedulerId);
+        scheduleHistory.setSchedulerConfiguration(new HashMap<>(scheduler.getConfiguration()));
+        scheduleHistory.setSchedulerId(getSchedulerId());
         historyRepository.save(scheduleHistory);
         return scheduleHistory;
     }
@@ -350,8 +381,6 @@ public class DefaultTaskScheduler implements TaskScheduler {
         }
         //创建Task
         Task task = taskFactory.create(job);
-        String scheduleId = schedulerId + "_" + IdUtils.newUUID();
-        task.setScheduleId(scheduleId);
         task.setSchedulerId(schedulerId);
         task.setStatus(TaskStatus.preparing);
         taskRepository.save(task);
@@ -374,17 +403,17 @@ public class DefaultTaskScheduler implements TaskScheduler {
     }
 
     protected boolean tryCancelNotExistsScheduler(String scheduleId) {
-
+        //取消了本调度器不存在的任务
         return false;
     }
 
     protected boolean tryPauseNotExistsScheduler(String scheduleId) {
-
+        //暂停了本调度器不存在的任务
         return false;
     }
 
     protected boolean tryStartNotExistsScheduler(String scheduleId) {
-
+        //开始本调度器不存在的任务
         return false;
     }
 

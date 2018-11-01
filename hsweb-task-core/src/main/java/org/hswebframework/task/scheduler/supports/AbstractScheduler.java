@@ -108,7 +108,7 @@ public abstract class AbstractScheduler implements Scheduler {
         Runnable runnable = () -> fire(new ScheduleContext() {
             @Override
             public boolean isLastExecute() {
-                return false;
+                return getNextExecuteTime() >= 0;
             }
 
             @Override

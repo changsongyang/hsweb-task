@@ -5,9 +5,7 @@ import org.hswebframework.task.TaskRepository;
 import org.hswebframework.task.TaskStatus;
 import org.hswebframework.task.utils.IdUtils;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -17,6 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class InMemoryTaskRepository implements TaskRepository {
 
     private Map<String, Task> taskMap = new ConcurrentHashMap<>();
+
+    @Override
+    public List<Task> findAll() {
+        return new ArrayList<>(taskMap.values());
+    }
 
     @Override
     public Task findById(String taskId) {
