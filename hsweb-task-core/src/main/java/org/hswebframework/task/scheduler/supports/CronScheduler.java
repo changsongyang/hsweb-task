@@ -86,7 +86,7 @@ public class CronScheduler extends AbstractScheduler {
 
     @Override
     public String toString() {
-        return "cron scheduler: [" + cronType + ":" + cron + "] : "
+        return "cron scheduler: [" + cronType + ":" + cron.asString() + "] : "
                 + CronDescriptor.instance(Locale.CHINA).describe(cron);
     }
 }
