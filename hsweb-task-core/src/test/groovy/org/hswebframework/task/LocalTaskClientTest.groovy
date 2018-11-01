@@ -35,6 +35,7 @@ class LocalTaskClientTest extends Specification {
         taskScheduler.setTaskWorkerManager(new DefaultTaskWorkerManager());
         taskScheduler.setLockManager(new LocalLockManager());
         taskScheduler.setJobRepository(new InMemoryJobRepository())
+        taskScheduler.setSchedulerFactory(schedulerFactory)
         taskScheduler.setTaskRepository(new InMemoryTaskRepository())
         taskScheduler.setEventPublisher(new DefaultEventSubscriberPublisher())
         taskScheduler.setAutoShutdown(true)
