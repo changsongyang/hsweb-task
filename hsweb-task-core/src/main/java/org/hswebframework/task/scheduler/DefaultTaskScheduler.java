@@ -368,8 +368,26 @@ public class DefaultTaskScheduler implements TaskScheduler {
         RunningScheduler runner = runningSchedulerMap.remove(scheduleId);
         if (null != runner) {
             runner.cancel(force);
+        } else {
+            tryCancelNotExistsScheduler(scheduleId);
         }
     }
+
+    protected boolean tryCancelNotExistsScheduler(String scheduleId) {
+
+        return false;
+    }
+
+    protected boolean tryPauseNotExistsScheduler(String scheduleId) {
+
+        return false;
+    }
+
+    protected boolean tryStartNotExistsScheduler(String scheduleId) {
+
+        return false;
+    }
+
 
     @Override
     public boolean pause(String scheduleId) {
@@ -377,6 +395,8 @@ public class DefaultTaskScheduler implements TaskScheduler {
         if (null != runner) {
             runner.scheduler.pause();
             return true;
+        } else {
+            tryPauseNotExistsScheduler(scheduleId);
         }
         return false;
     }
@@ -394,7 +414,11 @@ public class DefaultTaskScheduler implements TaskScheduler {
         if (history == null) {
             throw new NullPointerException("不存在的调度配置");
         }
-        doStart(history);
+        if (history.getSchedulerId().equals(getSchedulerId())) {
+            doStart(history);
+        } else {
+            tryStartNotExistsScheduler(scheduleId);
+        }
     }
 
     @Override
