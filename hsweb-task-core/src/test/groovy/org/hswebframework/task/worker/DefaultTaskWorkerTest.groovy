@@ -39,7 +39,7 @@ class DefaultTaskWorkerTest extends Specification {
     def "测试简单的任务执行"() {
         JobDetail detail = new JobDetail(
                 name: "test", id: "test",
-                taskType: "java-method",
+                jobType: "java-method",
                 content: "org.hswebframework.task.worker.executor.supports.TestClass.parameterMethod",
                 parameters: ["0": "param1", "1": "param2"]
         )

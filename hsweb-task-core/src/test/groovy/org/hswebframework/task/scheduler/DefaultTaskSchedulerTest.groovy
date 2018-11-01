@@ -48,7 +48,7 @@ class DefaultTaskSchedulerTest extends Specification {
         def jobRepository = new InMemoryJobRepository()
         jobRepository.save(new JobDetail(
                 id: "testJob",
-                taskType: "java-method",
+                jobType: "java-method",
                 content: "org.hswebframework.task.scheduler.TestJob.execute",
                 executeTimeOut: 100000,
                 parallel: false
@@ -71,7 +71,7 @@ class DefaultTaskSchedulerTest extends Specification {
 
     def "测试启动调度"() {
         given:
-        scheduler.schedule("testJob", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 100, 100, TimeUnit.MILLISECONDS))
+        scheduler.scheduleJob("testJob", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 100, 100, TimeUnit.MILLISECONDS))
         Thread.sleep(5000)
         scheduler.shutdown(true)
         expect:

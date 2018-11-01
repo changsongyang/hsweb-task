@@ -9,7 +9,9 @@ package org.hswebframework.task.scheduler;
  */
 public interface TaskScheduler {
 
-    String schedule(String jobId, Scheduler scheduler);
+    String scheduleJob(String jobId, Scheduler scheduler);
+
+    String scheduleTask(String taskId, Scheduler scheduler);
 
     void cancel(String scheduleId, boolean force);
 

@@ -200,11 +200,24 @@ public class DefaultTaskScheduler implements TaskScheduler {
         String group = task.getJob().getGroup();
         boolean parallel = task.getJob().isParallel();
 
+        RunningScheduler old = runningSchedulerMap.get(historyId);
+        if (null != old) {
+            //进行了相同的调度
+            if (old.task.equals(task) && old.scheduler.equals(scheduler)) {
+                log.debug("skip same task schedule,task:[{}],scheduler:[{}]", task.getId(), scheduler);
+                return;
+            }
+            log.debug("repeated schedule[{}],do cancel old scheduler:[{}],new scheduler:[{}]", historyId, old.scheduler, scheduler);
+            old.cancel(true);
+        }
+
         RunningScheduler runningScheduler = new RunningScheduler();
         runningScheduler.scheduleId = task.getScheduleId();
         runningScheduler.historyId = historyId;
         runningScheduler.task = task;
+
         runningSchedulerMap.put(historyId, runningScheduler);
+
         historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.running);
         runningScheduler.scheduler = scheduler
                 .onCancel(() -> {
@@ -273,7 +286,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                             }
                         }
                     } catch (Exception e) {
-                        log.error("schedule error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
+                        log.error("scheduleJob error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
                         runningScheduler.resetRunning();
                         lock.release();
                         eventPublisher.publish(new TaskFailedEvent(task, e));
@@ -285,11 +298,52 @@ public class DefaultTaskScheduler implements TaskScheduler {
                     }
                 })
                 .start();
-        log.debug("do schedule task {},scheduler:{}", task, scheduler);
+        log.debug("do scheduleJob task {},scheduler:{}", task, scheduler);
     }
 
     @Override
-    public String schedule(String jobId, Scheduler scheduler) {
+    public String scheduleTask(String taskId, Scheduler scheduler) {
+        Task task = taskRepository.findById(taskId);
+        if (null == task) {
+            throw new NullPointerException("task [" + taskId + "] not exists");
+        }
+        List<ScheduleHistory> histories = historyRepository.findByTaskId(taskId);
+        ScheduleHistory history;
+        if (histories == null || histories.isEmpty()) {
+            history = saveScheduledHistory(task, scheduler);
+        } else {
+            history = histories.stream().filter(his ->
+                    //同一个调度器或者是是可以竞争调度的任务
+                    his.getSchedulerId().equals(getSchedulerId()) || his.getStatus().isContestable())
+                    .findFirst()
+                    .orElseThrow(UnsupportedOperationException::new);
+            //不是同一个调度id获取的任务
+            if (!history.getSchedulerId().equals(getSchedulerId())) {
+                history.setSchedulerId(getSchedulerId());
+                historyRepository.save(history);
+            }
+        }
+
+        doSchedule(task, history.getId(), scheduler);
+        return history.getId();
+    }
+
+    protected ScheduleHistory saveScheduledHistory(Task task, Scheduler scheduler) {
+        ScheduleHistory scheduleHistory = new ScheduleHistory();
+        scheduleHistory.setId(IdUtils.newUUID());
+        scheduleHistory.setCreateTime(System.currentTimeMillis());
+        scheduleHistory.setJobId(task.getJobId());
+        scheduleHistory.setJobName(task.getJob().getName());
+        scheduleHistory.setTaskId(task.getId());
+        scheduleHistory.setSchedulerConfiguration(scheduler.getConfiguration());
+        scheduleHistory.setScheduleId(task.getScheduleId());
+        scheduleHistory.setSchedulerId(schedulerId);
+        historyRepository.save(scheduleHistory);
+        return scheduleHistory;
+    }
+
+    @Override
+    public String scheduleJob(String jobId, Scheduler scheduler) {
         JobDetail job = jobRepository.findById(jobId);
         if (job == null) {
             throw new NullPointerException("job [" + jobId + "] not exists");
@@ -303,20 +357,10 @@ public class DefaultTaskScheduler implements TaskScheduler {
         taskRepository.save(task);
         eventPublisher.publish(new TaskCreatedEvent(task));
         //记录日志
-        ScheduleHistory scheduleHistory = new ScheduleHistory();
-        scheduleHistory.setId(IdUtils.newUUID());
-        scheduleHistory.setCreateTime(System.currentTimeMillis());
-        scheduleHistory.setJobId(jobId);
-        scheduleHistory.setJobName(job.getName());
-        scheduleHistory.setTaskId(task.getId());
-        scheduleHistory.setSchedulerConfiguration(scheduler.getConfiguration());
-        scheduleHistory.setScheduleId(scheduleId);
-        scheduleHistory.setSchedulerId(schedulerId);
-        historyRepository.save(scheduleHistory);
-
+        ScheduleHistory history = saveScheduledHistory(task, scheduler);
         //执行调度
-        doSchedule(task, scheduleHistory.getId(), scheduler);
-        return scheduleHistory.getId();
+        doSchedule(task, history.getId(), scheduler);
+        return history.getId();
     }
 
     @Override

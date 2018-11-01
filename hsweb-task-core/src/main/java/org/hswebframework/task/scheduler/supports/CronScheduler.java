@@ -7,8 +7,6 @@ import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
 import lombok.extern.slf4j.Slf4j;
-import org.hswebframework.task.scheduler.ScheduleContext;
-import org.hswebframework.task.scheduler.Scheduler;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;

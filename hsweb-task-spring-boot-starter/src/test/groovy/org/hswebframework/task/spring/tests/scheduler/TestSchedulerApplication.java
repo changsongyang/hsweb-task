@@ -11,7 +11,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhouhao
@@ -36,10 +35,10 @@ public class TestSchedulerApplication implements CommandLineRunner {
         jobDetail.setId("test");
         jobDetail.setEnabled(true);
         jobDetail.setParallel(true);
-        jobDetail.setTaskType("java-method");
+        jobDetail.setJobType("java-method");
         jobDetail.setContent("org.hswebframework.task.spring.tests.worker.TestJob.test");
         jobRepository.save(jobDetail);
 
-        taskScheduler.schedule("test", Schedulers.cron(Executors.newSingleThreadScheduledExecutor(), "0/5 * * * * ?"));
+        taskScheduler.scheduleJob("test", Schedulers.cron(Executors.newSingleThreadScheduledExecutor(), "0/5 * * * * ?"));
     }
 }

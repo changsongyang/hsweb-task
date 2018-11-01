@@ -22,11 +22,11 @@ public class DefaultRunnableTaskBuilder implements RunnableTaskBuilder {
 
     @Override
     public RunnableTask build(Task task) throws Exception {
-        String type = task.getJob().getTaskType();
+        String type = task.getJob().getJobType();
         RunnableTaskBuilderProvider provider = providers.get(type);
         if (provider == null) {
             return new DefaultRunnableTask(task, (context) -> {
-                throw new UnsupportedOperationException("un support task type:" + task.getJob().getTaskType());
+                throw new UnsupportedOperationException("un support job type:" + task.getJob().getJobType());
             });
         }
 

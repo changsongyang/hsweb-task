@@ -113,13 +113,13 @@ class FullFunctionTest extends Specification {
         then: "创建任务并启动调度"
         jobRepository.save(new JobDetail(
                 id: "testJob",
-                taskType: "java-method",
+                jobType: "java-method",
                 content: "org.hswebframework.task.cluster.redisson.TestJob.execute",
                 executeTimeOut: 1000,
                 parallel: true,
                 group: "worker"
         ))
-        scheduler.schedule("testJob", Schedulers.period(Executors.newScheduledThreadPool(10), 100, 100, TimeUnit.MILLISECONDS))
+        scheduler.scheduleJob("testJob", Schedulers.period(Executors.newScheduledThreadPool(10), 100, 100, TimeUnit.MILLISECONDS))
 
         expect: "任务已执行"
         sleep(5000)
