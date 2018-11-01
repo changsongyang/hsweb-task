@@ -8,9 +8,12 @@ import org.hswebframework.task.worker.executor.RunnableTask;
 import org.hswebframework.task.worker.executor.RunnableTaskBuilder;
 import org.hswebframework.task.worker.executor.TaskExecutor;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -35,6 +38,9 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
 
     private RunnableTaskBuilder taskBuilder;
 
+    private Map<String, Future<?>> runnings = new ConcurrentHashMap<>();
+
+
     public ThreadPoolTaskExecutor(RunnableTaskBuilder taskBuilder) {
         this.executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
         this.taskBuilder = taskBuilder;
@@ -46,23 +52,38 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
     }
 
     @Override
+    public boolean cancel(String id) {
+        Future<?> future = runnings.remove(id);
+        if (null != future) {
+            return future.cancel(true);
+        }
+        return false;
+    }
+
+    @Override
     @SneakyThrows
     public String submitTask(Task task, Consumer<TaskOperationResult> resultConsumer) {
         RunnableTask runnableTask = taskBuilder.build(task);
         waiting.incrementAndGet();
-        executorService.submit(() -> {
+        Future<?> future = executorService.submit(() -> {
             waiting.decrementAndGet();
             running.incrementAndGet();
             log.info("start task [{}]", task.getId());
             TaskOperationResult result = runnableTask.run();
-            resultConsumer.accept(result);
+            if (runnings.containsKey(runnableTask.getId())) {
+                resultConsumer.accept(result);
+            } else {
+                log.warn("task[{}] maybe canceled", task.getId());
+            }
             log.info("task [{}] execute {}", task.getId(), result.getStatus());
             if (result.isSuccess()) {
                 success.incrementAndGet();
             } else {
                 fail.incrementAndGet();
             }
+            runnings.remove(runnableTask.getId());
         });
+        runnings.put(runnableTask.getId(), future);
         submitted.incrementAndGet();
         return runnableTask.getId();
     }

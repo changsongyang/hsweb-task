@@ -19,7 +19,7 @@ public class WorkerTaskExecutor extends ClusterTaskExecutor {
     private TaskExecutor localExecutor;
 
     public WorkerTaskExecutor(TimeoutOperations timeoutOperations, ClusterManager clusterManager, String workerId, TaskExecutor localExecutor) {
-        super(timeoutOperations,clusterManager, workerId);
+        super(timeoutOperations, clusterManager, workerId);
         this.localExecutor = localExecutor;
     }
 
@@ -28,7 +28,17 @@ public class WorkerTaskExecutor extends ClusterTaskExecutor {
         return localExecutor.submitTask(task, resultConsumer);
     }
 
+    @Override
+    public boolean cancel(String id) {
+        return localExecutor.cancel(id);
+    }
+
     public void startup() {
+        getTaskCancelQueue()
+                .consume(id -> {
+                    log.debug("cancel job:{}", id);
+                    cancel(id);
+                });
         getTaskQueue()
                 .consume(clusterTask -> {//订阅任务
                     log.info("worker [{}] accept cluster task ,taskId={},requestId={}", workerId, clusterTask.getTask().getId(), clusterTask.getRequestId());

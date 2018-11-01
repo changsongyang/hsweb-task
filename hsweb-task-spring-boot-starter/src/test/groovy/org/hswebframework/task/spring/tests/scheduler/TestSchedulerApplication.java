@@ -40,7 +40,6 @@ public class TestSchedulerApplication implements CommandLineRunner {
         jobDetail.setContent("org.hswebframework.task.spring.tests.worker.TestJob.test");
         jobRepository.save(jobDetail);
 
-        taskScheduler.schedule("test", Schedulers.period(Executors.newSingleThreadScheduledExecutor(), 100, 1000, TimeUnit.MILLISECONDS));
-
+        taskScheduler.schedule("test", Schedulers.cron(Executors.newSingleThreadScheduledExecutor(), "0/5 * * * * ?"));
     }
 }

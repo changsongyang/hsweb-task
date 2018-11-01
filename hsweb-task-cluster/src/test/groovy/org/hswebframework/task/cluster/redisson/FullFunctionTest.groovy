@@ -5,7 +5,7 @@ import org.hswebframework.task.ThreadPoolTimeoutOperations
 import org.hswebframework.task.TimeoutOperations
 import org.hswebframework.task.cluster.ClusterManager
 import org.hswebframework.task.cluster.worker.ClusterNodeTaskWorker
-import org.hswebframework.task.cluster.worker.ClusterWorkerManager
+import org.hswebframework.task.cluster.worker.ClusterTaskWorkerManager
 import org.hswebframework.task.job.JobDetail
 import org.hswebframework.task.job.JobRepository
 import org.hswebframework.task.lock.LocalLockManager
@@ -54,9 +54,9 @@ class FullFunctionTest extends Specification {
         def redisson = RedissonUtils.createRedissonClient()
         timeoutOperations = new ThreadPoolTimeoutOperations(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
         clusterManager = new RedissonClusterManager(redisson)
-        schedulerWorkerManager = new ClusterWorkerManager(timeoutOperations, clusterManager)
+        schedulerWorkerManager = new ClusterTaskWorkerManager(timeoutOperations, clusterManager)
         //schedulerWorkerManager.startup()
-        workerManager = new ClusterWorkerManager(timeoutOperations, clusterManager)
+        workerManager = new ClusterTaskWorkerManager(timeoutOperations, clusterManager)
         workerManager.startup()
         taskBuilder = new DefaultRunnableTaskBuilder()
         taskBuilder.addProvider(new JavaMethodInvokeTaskProvider())

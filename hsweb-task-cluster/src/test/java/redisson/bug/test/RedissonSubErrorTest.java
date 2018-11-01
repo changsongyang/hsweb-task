@@ -4,6 +4,7 @@ import org.hswebframework.task.utils.IdUtils;
 import org.redisson.Redisson;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
+import org.redisson.api.listener.MessageListener;
 
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -12,7 +13,7 @@ import java.util.function.Consumer;
 
 public class RedissonSubErrorTest {
 
-    static RedissonClient redissonClient = Redisson.create();
+    static RedissonClient           redissonClient  = Redisson.create();
     static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors() * 2);
 
 
@@ -26,11 +27,16 @@ public class RedissonSubErrorTest {
 
     public static void consume(String msgId, Consumer<String> consumer) {
         RTopic<String> topic = getResponseTopic(msgId);
-        topic.addListener((channel, msg) -> {
-            consumer.accept(msg);
+        topic.addListener(new MessageListener<String>() {
+            @Override
+            public void onMessage(CharSequence channel, String msg) {
+                consumer.accept(msg);
 
-            //*********[删除本行可解决此问题]**********
-            topic.removeAllListeners();
+                //*********[删除本行可解决此问题]**********
+//                topic.removeAllListeners();
+                //fixed
+                topic.removeListener(this);
+            }
         });
 
     }
@@ -55,12 +61,12 @@ public class RedissonSubErrorTest {
         executorService.scheduleAtFixedRate(() -> {
             String msgId = IdUtils.newUUID();
             try {
-                System.out.print("consume [" + msgId+"] times "+requestCounter.incrementAndGet());
-                consume(msgId, msg->{
+                System.out.print("consume [" + msgId + "] times " + requestCounter.incrementAndGet());
+                consume(msgId, msg -> {
 
                 });
                 System.out.println(" ok");
-                System.out.print("publish request [" + msgId+"]");
+                System.out.print("publish request [" + msgId + "]");
                 getRequestTopic().publish(msgId);
                 System.out.println(" ok");
             } catch (Exception e) {

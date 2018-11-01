@@ -22,6 +22,8 @@ public interface TaskExecutor extends ExecuteCounter {
      */
     String submitTask(Task task, Consumer<TaskOperationResult> resultConsumer);
 
+    boolean cancel(String id);
+
     void shutdown(boolean force);
 
     void startup();

@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * @since 1.0.0
  */
 @Slf4j
-public class ClusterWorkerManager implements TaskWorkerManager {
+public class ClusterTaskWorkerManager implements TaskWorkerManager {
 
     private ClusterManager          clusterManager;
     private Map<String, WorkerInfo> clusterWorkerInfoList;
@@ -28,14 +28,17 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     private Topic<WorkerInfo>       workerLeaveTopic;
     private TimeoutOperations       timeoutOperations;
 
+    private Map<Integer, Consumer<TaskWorker>> workerJoinListeners  = new ConcurrentHashMap<>();
+    private Map<Integer, Consumer<TaskWorker>> workerLeaveListeners = new ConcurrentHashMap<>();
+
     private boolean running = false;
 
     private WorkerSelectorRule selectorRule = RoundWorkerSelectorRule.instance;
 
     private Map<String, TaskWorker> localWorker = new ConcurrentHashMap<>();
 
-    public ClusterWorkerManager(TimeoutOperations timeoutOperations,
-                                ClusterManager clusterManager) {
+    public ClusterTaskWorkerManager(TimeoutOperations timeoutOperations,
+                                    ClusterManager clusterManager) {
         this.clusterManager = clusterManager;
         this.timeoutOperations = timeoutOperations;
         clusterWorkerInfoList = clusterManager.getMap("cluster:workers");
@@ -80,28 +83,26 @@ public class ClusterWorkerManager implements TaskWorkerManager {
     public void doRegister(TaskWorker worker) {
         localWorker.put(worker.getId(), worker);
         worker.startup();
+        workerJoinListeners.forEach((integer, workerConsumer) -> workerConsumer.accept(worker));
     }
 
     @Override
     public long onWorkerJoin(Consumer<TaskWorker> workerConsumer) {
-        long hash = System.identityHashCode(workerConsumer);
-
-
+        int hash = System.identityHashCode(workerConsumer);
+        workerJoinListeners.put(hash, workerConsumer);
         return hash;
     }
 
     @Override
     public long onWorkerLeave(Consumer<TaskWorker> workerConsumer) {
-        long hash = System.identityHashCode(workerConsumer);
-
-
+        int hash = System.identityHashCode(workerConsumer);
+        workerLeaveListeners.put(hash, workerConsumer);
         return hash;
     }
 
     @Override
     public TaskWorker unregister(String id, boolean force) {
         TaskWorker worker = localWorker.get(id);
-
         if (null != worker) {
             worker.shutdown(force);
             WorkerInfo workerInfo = clusterWorkerInfoList.getOrDefault(id, WorkerInfo.of(worker));
@@ -147,10 +148,29 @@ public class ClusterWorkerManager implements TaskWorkerManager {
         //worker leave
         workerLeaveTopic.subscribe(workerInfo -> {
             log.debug("worker leave: {}", workerInfo);
-            localWorker.remove(workerInfo.getId());
+            TaskWorker worker = localWorker.remove(workerInfo.getId());
+            if (null != worker) {
+                workerLeaveListeners.forEach((integer, workerConsumer) -> workerConsumer.accept(worker));
+            }
         });
-        clusterWorkerInfoList
-                .values()
-                .forEach(joinWorker);
+        clusterWorkerInfoList.values().forEach(joinWorker);
+        Thread clientLeaveCheckerThread = new Thread(() -> {
+            for (; ; ) {
+                for (WorkerInfo workerInfo : clusterWorkerInfoList.values()) {
+                    if (System.currentTimeMillis() - workerInfo.getLastHeartbeatTime() > 10000) {
+                        log.debug("worker[{}] is dead ", workerInfo.getId());
+                        workerLeaveTopic.publish(workerInfo);
+                        clusterWorkerInfoList.remove(workerInfo.getId());
+                    }
+                }
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+        });
+        clientLeaveCheckerThread.setName("worker-checker");
+        clientLeaveCheckerThread.start();
     }
 }

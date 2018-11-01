@@ -12,5 +12,12 @@
 
     <artifactId>hsweb-task-core</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.cronutils</groupId>
+            <artifactId>cron-utils</artifactId>
+            <version>7.0.5</version>
+        </dependency>
+    </dependencies>
 
 </project>

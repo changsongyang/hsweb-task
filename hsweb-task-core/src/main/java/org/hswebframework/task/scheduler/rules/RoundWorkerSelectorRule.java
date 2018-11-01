@@ -5,7 +5,6 @@ import org.hswebframework.task.worker.TaskWorker;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author zhouhao

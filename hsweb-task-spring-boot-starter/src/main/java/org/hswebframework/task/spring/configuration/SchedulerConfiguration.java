@@ -9,6 +9,8 @@ import org.hswebframework.task.scheduler.DefaultTaskScheduler;
 import org.hswebframework.task.scheduler.SchedulerFactory;
 import org.hswebframework.task.scheduler.TaskScheduler;
 import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
+import org.hswebframework.task.scheduler.supports.CronSchedulerProvider;
+import org.hswebframework.task.scheduler.supports.PeriodSchedulerProvider;
 import org.hswebframework.task.spring.SchedulerFactoryBean;
 import org.hswebframework.task.worker.DefaultTaskWorkerManager;
 import org.hswebframework.task.worker.TaskWorkerManager;
@@ -16,12 +18,28 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 /**
  * @author zhouhao
  * @since 1.0.0
  */
 @Configuration
 public class SchedulerConfiguration {
+
+
+    @Bean
+    public PeriodSchedulerProvider periodSchedulerProvider(ScheduledExecutorService executorService) {
+        return new PeriodSchedulerProvider(executorService);
+    }
+
+    @Bean
+    public CronSchedulerProvider cronSchedulerProvider(ScheduledExecutorService executorService) {
+        return new CronSchedulerProvider(executorService);
+    }
+
     @Bean
     @ConditionalOnMissingBean(SchedulerFactory.class)
     public SchedulerFactoryBean schedulerFactoryBean() {

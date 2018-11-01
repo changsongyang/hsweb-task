@@ -6,6 +6,7 @@ import org.hswebframework.task.job.JobDetail;
 import org.hswebframework.task.utils.IdUtils;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhouhao
@@ -19,7 +20,7 @@ public class DefaultTaskFactory implements TaskFactory {
         task.setJob(job);
         task.setJobId(job.getId());
         task.setCreateTime(System.currentTimeMillis());
-        task.setTimeout(job.getExecuteTimeOut());
+        task.setTimeout(job.getExecuteTimeOut() <= 0 ? Integer.MAX_VALUE : job.getExecuteTimeOut());
         return task;
     }
 }

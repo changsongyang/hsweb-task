@@ -1,19 +1,31 @@
 package org.hswebframework.task.scheduler.supports;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.scheduler.ScheduleContext;
 import org.hswebframework.task.scheduler.Scheduler;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public abstract class AbstractScheduler implements Scheduler {
+
+    public AbstractScheduler(ScheduledExecutorService executorService) {
+        this.executorService = executorService;
+    }
+
+    @Getter
+    @Setter
+    protected ScheduledExecutorService executorService;
 
     protected List<Consumer<ScheduleContext>> allTriggerListener = new ArrayList<>();
 
@@ -23,11 +35,14 @@ public abstract class AbstractScheduler implements Scheduler {
 
     protected List<Runnable> pauseListener = new ArrayList<>();
 
+    protected AtomicLong fireTimes = new AtomicLong();
+
     protected boolean started = false;
 
     protected abstract void initFromConfiguration(Map<String, Object> configuration);
 
     protected void fire(ScheduleContext context) {
+        fireTimes.incrementAndGet();
         for (Consumer<ScheduleContext> consumer : allTriggerListener) {
             consumer.accept(context);
         }
@@ -82,7 +97,49 @@ public abstract class AbstractScheduler implements Scheduler {
         return this;
     }
 
-    protected abstract void doStart();
+    abstract protected long getNextFireTimestamp();
+
+    protected void doStart() {
+        long time = getNextFireTimestamp();
+        if (time < 0) {
+            return;
+        }
+        AtomicReference<ScheduledFuture> futureAtomicReference = new AtomicReference<>();
+        Runnable runnable = () -> fire(new ScheduleContext() {
+            @Override
+            public boolean isLastExecute() {
+                return false;
+            }
+
+            @Override
+            public long getNextExecuteTime() {
+                return getNextFireTimestamp();
+            }
+
+            @Override
+            public void cancel() {
+                if (futureAtomicReference.get() != null) {
+                    futureAtomicReference.get().cancel(true);
+                }
+                futureAtomicReference.set(null);
+            }
+
+            @Override
+            public void next(boolean currentSuccess) {
+                doStart();
+                cancel();
+            }
+        });
+
+        long delay = time - System.currentTimeMillis();
+        if (delay <= 0) {
+            log.warn("illegal delay time :{},scheduler:{}", delay, this.toString());
+        }
+        futureAtomicReference.set(executorService.schedule(
+                runnable
+                , Math.max(delay, 0)
+                , TimeUnit.MILLISECONDS));
+    }
 
     @Override
     public Scheduler stop(boolean force) {

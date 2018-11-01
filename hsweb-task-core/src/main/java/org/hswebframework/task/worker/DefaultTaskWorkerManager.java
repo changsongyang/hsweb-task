@@ -1,7 +1,13 @@
 package org.hswebframework.task.worker;
 
+import lombok.Setter;
+import org.hswebframework.task.scheduler.WorkerSelectorRule;
+import org.hswebframework.task.scheduler.rules.RoundWorkerSelectorRule;
+
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * @author zhouhao
@@ -10,6 +16,12 @@ import java.util.function.Consumer;
 public class DefaultTaskWorkerManager implements TaskWorkerManager {
 
     private Map<String, TaskWorker> workerRepository = new HashMap<>();
+
+    private Map<Integer, Consumer<TaskWorker>> workerJoinListeners  = new ConcurrentHashMap<>();
+    private Map<Integer, Consumer<TaskWorker>> workerLeaveListeners = new ConcurrentHashMap<>();
+
+    @Setter
+    private WorkerSelectorRule selectorRule = RoundWorkerSelectorRule.instance;
 
     @Override
     public TaskWorker getWorkerById(String id) {
@@ -23,22 +35,21 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
 
     @Override
     public TaskWorker select(String group) {
-        return getAllWorker()
+        return selectorRule.select(getAllWorker()
                 .stream()
                 .filter(worker -> {
                     if (group == null || group.length() == 0) {
                         return true;
                     }
                     return worker.getHealth() > 0 && Arrays.asList(worker.getGroups()).contains(group);
-                })
-                .max(Comparator.comparingInt(TaskWorker::getHealth))
-                .orElse(null);
+                }).collect(Collectors.toList()));
     }
 
     @Override
     public TaskWorker register(TaskWorker worker) {
         workerRepository.put(worker.getId(), worker);
         worker.startup();
+        workerJoinListeners.forEach((integer, workerConsumer) -> workerConsumer.accept(worker));
         return worker;
     }
 
@@ -48,23 +59,22 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
         if (worker == null) {
             return null;
         }
+        workerLeaveListeners.forEach((integer, workerConsumer) -> workerConsumer.accept(worker));
         worker.shutdown(force);
         return worker;
     }
 
     @Override
     public long onWorkerJoin(Consumer<TaskWorker> workerConsumer) {
-        long hash = System.identityHashCode(workerConsumer);
-
-
+        int hash = System.identityHashCode(workerConsumer);
+        workerJoinListeners.put(hash, workerConsumer);
         return hash;
     }
 
     @Override
     public long onWorkerLeave(Consumer<TaskWorker> workerConsumer) {
-        long hash = System.identityHashCode(workerConsumer);
-
-
+        int hash = System.identityHashCode(workerConsumer);
+        workerLeaveListeners.put(hash, workerConsumer);
         return hash;
     }
 

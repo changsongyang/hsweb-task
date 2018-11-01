@@ -19,18 +19,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class PeriodScheduler extends AbstractScheduler {
 
-    private ScheduledExecutorService executorService;
-
-    private long initialDelay;
-    private long period;
-
+    private long     initialDelay;
+    private long     period;
     private TimeUnit timeUnit;
 
-    public ScheduledExecutorService getExecutorService() {
-        return executorService;
-    }
-
-    public PeriodScheduler() {
+    public PeriodScheduler(ScheduledExecutorService executorService) {
+        super(executorService);
     }
 
     public void setExecutorService(ScheduledExecutorService executorService) {
@@ -38,6 +32,7 @@ public class PeriodScheduler extends AbstractScheduler {
     }
 
     public PeriodScheduler(ScheduledExecutorService executorService, long initialDelay, long period, TimeUnit timeUnit) {
+        super(executorService);
         this.executorService = executorService;
         this.initialDelay = initialDelay;
         this.timeUnit = timeUnit;
@@ -46,7 +41,7 @@ public class PeriodScheduler extends AbstractScheduler {
 
     @Override
     public String getType() {
-        return "period";
+        return PeriodSchedulerProvider.TYPE;
     }
 
     @Override
@@ -62,9 +57,9 @@ public class PeriodScheduler extends AbstractScheduler {
     @Override
     public Map<String, Object> getConfiguration() {
         Map<String, Object> config = new HashMap<>();
+        config.put("type", getType());
         config.put("initialDelay", initialDelay);
         config.put("period", period);
-
         config.put("timeUnit", timeUnit);
 
         return config;
@@ -73,37 +68,15 @@ public class PeriodScheduler extends AbstractScheduler {
     public void initFromConfiguration(Map<String, Object> configuration) {
         initialDelay = (long) configuration.get("initialDelay");
         period = (long) configuration.get("period");
-
         timeUnit = (TimeUnit) configuration.get("timeUnit");
     }
 
     @Override
-    protected void doStart() {
-        AtomicReference<ScheduledFuture> futureAtomicReference = new AtomicReference<>();
-        // 为什么不使用scheduleAtFixedRate?
-        // 因为如果在执行间隔小于执行时间时,会导致任务队列堆积.
-        futureAtomicReference.set(executorService.schedule(() ->
-                fire(new ScheduleContext() {
-                    @Override
-                    public boolean isLastExecute() {
-                        return false;
-                    }
-
-                    @Override
-                    public long getNextExecuteTime() {
-                        return PeriodScheduler.this.getNextExecuteTime(1).get(0);
-                    }
-
-                    @Override
-                    public void cancel() {
-                        futureAtomicReference.get().cancel(true);
-                    }
-
-                    @Override
-                    public void next(boolean currentSuccess) {
-                        doStart();
-                        cancel();
-                    }
-                }), period, timeUnit));
+    protected long getNextFireTimestamp() {
+        if (fireTimes.get() == 0) {
+            return System.currentTimeMillis() + timeUnit.toMillis(initialDelay);
+        }
+        return System.currentTimeMillis() + timeUnit.toMillis(period);
     }
+
 }

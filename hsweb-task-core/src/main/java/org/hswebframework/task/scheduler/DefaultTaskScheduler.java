@@ -14,15 +14,18 @@ import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
 import org.hswebframework.task.utils.IdUtils;
 import org.hswebframework.task.worker.TaskWorker;
 import org.hswebframework.task.worker.TaskWorkerManager;
+import org.hswebframework.task.worker.WorkerStatus;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * @author zhouhao
@@ -78,14 +81,33 @@ public class DefaultTaskScheduler implements TaskScheduler {
     private Map<String, RunningScheduler> runningSchedulerMap = new ConcurrentHashMap<>();
 
     class RunningScheduler {
-        private volatile Scheduler  scheduler;
-        private volatile String     scheduleId;
-        private volatile String     historyId;
+        private volatile Scheduler scheduler;
+        private volatile String    scheduleId;
+        private volatile String    historyId;
+
+        private volatile String            workerId;
+        private volatile Callable<Boolean> cancelRunnable;
+        private volatile ScheduleContext   context;
+
         private          Task       task;
         private volatile AtomicLong errorCounter = new AtomicLong();
 
+        void resetRunning() {
+            cancelRunnable = null;
+            context = null;
+            workerId = null;
+        }
+
         void cancel(boolean force) {
             scheduler.cancel(force);
+            if (cancelRunnable != null) {
+                try {
+                    cancelRunnable.call();
+                } catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            resetRunning();
         }
 
         private boolean doError(String errorName, TaskStatus status) {
@@ -130,9 +152,25 @@ public class DefaultTaskScheduler implements TaskScheduler {
                 SchedulerStatus.pause);
         log.debug("start up scheduler {}, auto start {} tasks", this, histories.size());
         histories.forEach(this::doStart);
-        taskWorkerManager.onWorkerJoin(worker -> {
-            restartNoWorkerTask();
+
+        taskWorkerManager.onWorkerLeave(worker -> {
+            //执行任务的worker下线了,为了防止一直等待任务执行,手动进行继续执行
+            List<RunningScheduler> runningInWorker = getRunningScheduler(worker.getId());
+            for (RunningScheduler runningScheduler : runningInWorker) {
+                log.debug("doing job worker[{}] leave,do next scheduler for task:{}",
+                        worker.getId(),
+                        runningScheduler.task.getId());
+                try {
+                    if (!runningScheduler.cancelRunnable.call()) {
+                        runningScheduler.context.next(false);
+                    }
+                } catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                    runningScheduler.context.next(false);
+                }
+            }
         });
+        taskWorkerManager.onWorkerJoin(worker -> restartNoWorkerTask());
     }
 
     protected void restartNoWorkerTask() {
@@ -152,6 +190,12 @@ public class DefaultTaskScheduler implements TaskScheduler {
         log.debug("task [{}] status changed : {} ", task.getId(), taskStatus);
     }
 
+    private List<RunningScheduler> getRunningScheduler(String workerId) {
+        return runningSchedulerMap.values().stream()
+                .filter(sc -> workerId.equals(sc.workerId))
+                .collect(Collectors.toList());
+    }
+
     protected void doSchedule(Task task, String historyId, Scheduler scheduler) {
         String group = task.getJob().getGroup();
         boolean parallel = task.getJob().isParallel();
@@ -162,7 +206,6 @@ public class DefaultTaskScheduler implements TaskScheduler {
         runningScheduler.task = task;
         runningSchedulerMap.put(historyId, runningScheduler);
         historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.running);
-
         runningScheduler.scheduler = scheduler
                 .onCancel(() -> {
                     taskRepository.changeStatus(task.getId(), TaskStatus.cancel);
@@ -185,6 +228,8 @@ public class DefaultTaskScheduler implements TaskScheduler {
                         //选择worker
                         TaskWorker worker = taskWorkerManager.select(group);
                         if (worker != null) {
+                            runningScheduler.workerId = worker.getId();
+                            runningScheduler.context = context;
                             log.debug("select worker[{}] execute job[{}]", worker.getId(), task.getJobId());
                             //如果不是并行,则锁住.避免重复执行
                             if (!parallel) {
@@ -196,11 +241,13 @@ public class DefaultTaskScheduler implements TaskScheduler {
                             //提交任务给worker
                             String id = worker.getExecutor()
                                     .submitTask(task, result -> {
+                                        runningScheduler.workerId = null;
                                         try {
                                             eventPublisher.publish(new TaskExecuteAfterEvent(task, result));
                                             changeTaskStatus(task, result.getStatus());
                                             logExecuteResult(result);
                                         } finally {
+                                            runningScheduler.cancelRunnable = null;
                                             finalLock.release();
                                             if (!result.isSuccess()) {
                                                 if (runningScheduler.doError(result.getErrorName(), result.getStatus())) {
@@ -211,22 +258,29 @@ public class DefaultTaskScheduler implements TaskScheduler {
                                             }
                                         }
                                     });
+                            runningScheduler.cancelRunnable = () -> worker.getExecutor().cancel(id);
                             eventPublisher.publish(new TaskExecuteBeforeEvent(id, task));
                         } else {
+                            log.warn("can not find any worker for task:[{}]", task.getId());
                             lock.release();
+                            runningScheduler.resetRunning();
                             changeTaskStatus(task, TaskStatus.noWorker);
                             eventPublisher.publish(new TaskFailedEvent(task, null));
                             if (runningScheduler.doError(null, TaskStatus.noWorker)) {
                                 context.next(false);
+                            } else {
+                                historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.noWorker);
                             }
-                            log.warn("can not find any worker for task:[{}]", task.getId());
                         }
                     } catch (Exception e) {
+                        log.error("schedule error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
+                        runningScheduler.resetRunning();
                         lock.release();
                         eventPublisher.publish(new TaskFailedEvent(task, e));
-                        log.error("schedule error,taskId:[{}], jobId:[{}],group:[{}]", task.getId(), task.getJobId(), group, e);
                         if (runningScheduler.doError(e.getClass().getName(), TaskStatus.failed)) {
                             context.next(false);
+                        } else {
+                            historyRepository.changeStatus(runningScheduler.historyId, SchedulerStatus.cancel);
                         }
                     }
                 })
