@@ -9,7 +9,7 @@
 提供任务配置,调度,监控. 支持单节点,集群,分布式部署.支持多种任务配置方式: 
 注解, jar包, 脚本(js,groovy)
 
-# 单点,集群模式
+# 单点模式
 
 引入依赖
 ```xml
@@ -30,7 +30,9 @@
         SpringApplication.run(Application.class);
     }
          
-    @Job(name="测试任务",scheduler=@Scheduler(cron="0 0/1 * * * ?"))
+    //使用注解方式定义一个任务,并指定调度规则
+    @Job(id="test.job",name="测试任务")
+    @Scheduled(cron="0 0/1 * * * ?") //支持spring的Scheduled注解
     public void myJob(){
         System.out.println("执行任务");
     }
@@ -59,15 +61,15 @@ application.yml
 ```yaml
 hsweb: 
     task:
-      cluster: #集群时配置
+      cluster: #集群管理配置,默认使用redis进行集群管理
         redis:
           hosts: redis://127.0.0.1:8761
           database: 1
       worker:
-        id: ${spring.application.name}-${HOSTNAME}
-        groups: ${spring.application.name}
-        name: worker服务
-        executor-type: thread-pool
+       # id: ${spring.application.name}-${HOSTNAME} #默认使用此ID,不同的节点id必须不同.
+        name: worker-node-1
+        groups: ${spring.application.name} #worker将执行这些分组的任务
+        client-group: ${spring.application.name} #worker作为client自动提交任务时,将使用此分组,必须为groups属性的子集
 ```
 
  ## 定义worker
@@ -81,27 +83,13 @@ hsweb:
         SpringApplication.run(Application.class);
     }
          
-    @Job(name="测试任务")
+    //使用注解方式定义一个任务,并指定调度规则
+    @Job(id="test.job",name="测试任务")
+    @Scheduled(cron="0 0/1 * * * ?") //支持spring的Scheduled注解
     public void myJob(){
         System.out.println("执行任务");
     }
  }
-```
-
-application.yml
-
-```yaml
-hsweb: 
-    task:
-      cluster:
-        redis:
-          address: redis://127.0.0.1:6379
-          database: 1
-      worker:
-        id: ${spring.application.name}-${HOST}
-        groups: ${spring.application.name}
-        name: worker服务
-        executor-type: thread-pool
 ```
 
 ## 定义scheduler
@@ -126,5 +114,5 @@ hsweb:
           address: redis://127.0.0.1:8761
           database: 1
       scheduler:
-        id: ${spring.application.name}-${HOST}
+#        id: ${spring.application.name}-${HOSTNAME} #默认使用此ID
 ```
