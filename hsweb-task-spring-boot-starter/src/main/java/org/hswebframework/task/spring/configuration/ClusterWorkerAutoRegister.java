@@ -10,6 +10,7 @@ import org.hswebframework.task.worker.executor.TaskExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -42,7 +43,10 @@ public class ClusterWorkerAutoRegister implements CommandLineRunner {
 
         ClusterNodeTaskWorker worker = new ClusterNodeTaskWorker(workerProperties.getId(), timeoutOperations, clusterManager, taskExecutor);
         worker.setId(workerProperties.getId());
-        worker.setGroups(workerProperties.getGroups());
+        String[] newGroup = Arrays.copyOf(workerProperties.getGroups(), workerProperties.getGroups().length + 1);
+        newGroup[newGroup.length - 1] = worker.getId();
+
+        worker.setGroups(newGroup);
         worker.setHost(workerProperties.getHost());
         worker.setRegisterId(IdUtils.newUUID());
         worker.setName(workerProperties.getName());

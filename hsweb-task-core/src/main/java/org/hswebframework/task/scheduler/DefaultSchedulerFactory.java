@@ -11,7 +11,6 @@ public class DefaultSchedulerFactory implements SchedulerFactory {
 
     private Map<String, SchedulerFactoryProvider> providers = new HashMap<>();
 
-
     public DefaultSchedulerFactory register(SchedulerFactoryProvider provider) {
         providers.put(provider.getSupportType(), provider);
         return this;

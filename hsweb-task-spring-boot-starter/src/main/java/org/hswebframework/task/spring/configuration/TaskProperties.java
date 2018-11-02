@@ -18,6 +18,7 @@ public class TaskProperties {
 
     private WorkerProperties worker = new WorkerProperties();
 
+
     @Getter
     @Setter
     public static class SchedulerProperties {

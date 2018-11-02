@@ -1,7 +1,9 @@
 package org.hswebframework.task.spring.configuration;
 
 import org.hswebframework.task.spring.annotation.EnableTaskWorker;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ImportSelector;
+import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
 
@@ -13,13 +15,13 @@ import java.util.Map;
  * @author zhouhao
  * @since 1.0.0
  */
-public class WorkerConfigurationSelector implements ImportSelector {
+public class WorkerConfigurationSelector implements ImportSelector, EnvironmentAware {
+
+    private Environment environment;
 
     @Override
     public String[] selectImports(AnnotationMetadata importingClassMetadata) {
-        Map<String, Object> map = importingClassMetadata.getAnnotationAttributes(EnableTaskWorker.class.getName());
         List<String> imports = new ArrayList<>();
-
         boolean isCluster;
         try {
             ClassUtils.forName("org.hswebframework.task.cluster.ClusterManager", this.getClass().getClassLoader());
@@ -28,17 +30,22 @@ public class WorkerConfigurationSelector implements ImportSelector {
             isCluster = false;
         }
         imports.add("org.hswebframework.task.spring.configuration.TaskConfiguration");
-        if (!isCluster) {
-            imports.add("org.hswebframework.task.spring.configuration.LocalTaskConfiguration");
+        imports.add("org.hswebframework.task.spring.configuration.WorkerConfiguration");
+        if (!"true".equals(environment.getProperty("hsweb.task.cluster.enabled", String.valueOf(isCluster)))) {
             imports.add("org.hswebframework.task.spring.configuration.LocalWorkerAutoRegister");
+            imports.add("org.hswebframework.task.spring.configuration.LocalWorkerConfiguration");
         } else {
             imports.add("org.hswebframework.task.spring.configuration.ClusterManagerConfiguration");
             imports.add("org.hswebframework.task.spring.configuration.ClusterWorkerConfiguration");
             imports.add("org.hswebframework.task.spring.configuration.ClusterWorkerAutoRegister");
             imports.add("org.hswebframework.task.spring.configuration.ClusterWorkerManagerConfiguration");
-
         }
 
         return imports.toArray(new String[0]);
+    }
+
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 }

@@ -68,7 +68,7 @@ public class PeriodScheduler extends AbstractScheduler {
     public void initFromConfiguration(Map<String, Object> configuration) {
         initialDelay = (long) configuration.get("initialDelay");
         period = (long) configuration.get("period");
-        timeUnit = (TimeUnit) configuration.get("timeUnit");
+        timeUnit = (TimeUnit) configuration.getOrDefault("timeUnit", TimeUnit.MILLISECONDS);
     }
 
     @Override

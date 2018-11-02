@@ -1,6 +1,8 @@
 package org.hswebframework.task.spring.annotation;
 
 
+import lombok.RequiredArgsConstructor;
+
 import java.lang.annotation.*;
 
 /**
@@ -12,10 +14,20 @@ import java.lang.annotation.*;
 @Documented
 public @interface Job {
 
-    String id() default "";
+    String id();
 
-    String name() default "";
+    String name();
 
     int version() default 1;
+
+    boolean parallel() default false;
+
+    int timeoutSeconds() default 60;
+
+    Class<Throwable>[] retryWithout() default {};
+
+    int errorRetryTimes() default 3;
+
+    long retryInterval() default 0;
 
 }

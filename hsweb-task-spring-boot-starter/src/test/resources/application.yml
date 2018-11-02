@@ -4,6 +4,8 @@ spring:
 
 hsweb:
   task:
+#    cluster:
+#      enabled: true
     worker:
       id: ${spring.application.name}
       groups: ${spring.application.name}

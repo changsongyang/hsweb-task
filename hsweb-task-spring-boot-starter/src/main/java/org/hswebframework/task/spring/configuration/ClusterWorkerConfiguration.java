@@ -1,7 +1,9 @@
 package org.hswebframework.task.spring.configuration;
 
+import org.hswebframework.task.TaskClient;
 import org.hswebframework.task.TimeoutOperations;
 import org.hswebframework.task.cluster.ClusterManager;
+import org.hswebframework.task.cluster.client.WorkerTaskClient;
 import org.hswebframework.task.cluster.worker.ClusterNodeTaskWorker;
 import org.hswebframework.task.cluster.worker.WorkerTaskExecutor;
 import org.hswebframework.task.worker.executor.RunnableTaskBuilder;
@@ -11,6 +13,7 @@ import org.hswebframework.task.worker.executor.supports.JavaMethodInvokeTaskProv
 import org.hswebframework.task.worker.executor.supports.ThreadPoolTaskExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,15 +27,10 @@ import java.util.concurrent.Executors;
 @Configuration
 public class ClusterWorkerConfiguration {
 
-    @Bean
-    public JavaMethodInvokeTaskProvider javaMethodInvokeTaskProvider() {
-        return new JavaMethodInvokeTaskProvider();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(RunnableTaskBuilder.class)
-    public SpringRunnableTaskBuilder springRunnableTaskBuilder() {
-        return new SpringRunnableTaskBuilder();
+    @Bean(initMethod = "startup", destroyMethod = "shutdown")
+    @ConditionalOnMissingBean(TaskClient.class)
+    public TaskClient workerTaskClient(ClusterManager clusterManager) {
+        return new WorkerTaskClient(clusterManager);
     }
 
     @Bean

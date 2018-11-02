@@ -46,16 +46,26 @@ class RedissonClusterManagerTest extends Specification {
     }
 
     def "测试Queue"() {
-        given:
+        given: "测试poll"
         def queue = clusterManager.getQueue("test-queue");
         queue.close()
         new Thread({
             Thread.sleep(1000)
             queue.add("1234")
         }).start()
-        def val = queue.poll(2000,TimeUnit.MILLISECONDS);
-        expect:
+        def val = queue.poll(2000, TimeUnit.MILLISECONDS);
+        when: "成功消费"
         val == "1234"
+        then: "测试consume"
+        def consumeObj
+        queue.consume({ obj -> consumeObj = obj })
+        new Thread({
+            Thread.sleep(1000)
+            queue.add("2345")
+        }).start()
+        Thread.sleep(2000)
+        expect: "成功消费"
+        consumeObj == "2345"
     }
 
     def "测试Topic和CountDownLatch"() {

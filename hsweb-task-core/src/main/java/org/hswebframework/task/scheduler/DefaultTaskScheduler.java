@@ -81,13 +81,13 @@ public class DefaultTaskScheduler implements TaskScheduler {
 
     class RunningScheduler {
         private volatile Scheduler scheduler;
-        private volatile String historyId;
+        private volatile String    historyId;
 
-        private volatile String workerId;
+        private volatile String            workerId;
         private volatile Callable<Boolean> cancelRunnable;
-        private volatile ScheduleContext context;
+        private volatile ScheduleContext   context;
 
-        private Task task;
+        private          Task       task;
         private volatile AtomicLong errorCounter = new AtomicLong();
 
         void resetRunning() {
@@ -187,9 +187,8 @@ public class DefaultTaskScheduler implements TaskScheduler {
                         worker.getId(),
                         runningScheduler.task.getId());
                 try {
-                    if (!runningScheduler.cancelRunnable.call()) {
-                        runningScheduler.context.next(false);
-                    }
+                    runningScheduler.cancelRunnable.call();
+                    runningScheduler.context.next(false);
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                     runningScheduler.context.next(false);

@@ -8,6 +8,7 @@ import org.hswebframework.task.worker.executor.TaskExecutor;
 
 import java.util.Map;
 
+import static org.hswebframework.task.worker.WorkerStatus.busy;
 import static org.hswebframework.task.worker.WorkerStatus.shutdown;
 
 /**
@@ -21,8 +22,11 @@ public class ClusterNodeTaskWorker extends DefaultTaskWorker {
 
     private WorkerTaskExecutor workerTaskExecutor;
 
+    private ClusterManager clusterManager;
+
     public ClusterNodeTaskWorker(String id, TimeoutOperations timeoutOperations, ClusterManager clusterManager, TaskExecutor executor) {
-        workerTaskExecutor = new WorkerTaskExecutor(timeoutOperations,clusterManager, id, executor);
+        workerTaskExecutor = new WorkerTaskExecutor(timeoutOperations, clusterManager, id, executor);
+        this.clusterManager = clusterManager;
         super.setExecutor(workerTaskExecutor);
         super.setId(id);
         this.workerInfoMap = clusterManager.getMap("cluster:workers");
@@ -33,12 +37,19 @@ public class ClusterNodeTaskWorker extends DefaultTaskWorker {
         workerTaskExecutor.startup();
         super.startup();
         Thread heartbeatThread = new Thread(() -> {
+            boolean first = true;
             for (; getStatus() != shutdown; ) {
                 try {
                     WorkerInfo workerInfo = WorkerInfo.of(this);
                     workerInfo.setLastHeartbeatTime(System.currentTimeMillis());
-                    workerInfoMap.put(workerInfo.getId(), workerInfo);
+                    WorkerInfo old = workerInfoMap.put(workerInfo.getId(), workerInfo);
+                    if (old == null && !first) {
+                        clusterManager
+                                .getTopic("cluster:worker:join")
+                                .publish(workerInfo);
+                    }
                     Thread.sleep(1000);
+                    first = false;
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                 }

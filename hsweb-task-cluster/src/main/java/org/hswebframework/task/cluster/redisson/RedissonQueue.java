@@ -1,38 +1,47 @@
 package org.hswebframework.task.cluster.redisson;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.cluster.Queue;
 import org.redisson.api.RBlockingQueue;
-import org.redisson.api.RedissonReactiveClient;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public class RedissonQueue<T> implements Queue<T> {
 
     private RBlockingQueue<T> realQueue;
 
-    private Set<Consumer<T>> consumers = new HashSet<>();
+    private volatile Consumer<T> consumer;
 
-    private Future<?> consumeFuture;
+    private Set<Consumer<T>> consumers = new HashSet<>();
 
     private ExecutorService executorService;
 
     private boolean running;
 
+    private Stream<T> stream;
+    private Future<?> stage;
+
     public RedissonQueue(RBlockingQueue<T> realQueue, ExecutorService executorService) {
         this.realQueue = realQueue;
         this.executorService = executorService;
+        consumer = t -> {
+            for (Consumer<T> consumer : consumers) {
+                try {
+                    consumer.accept(t);
+                } catch (Exception e) {
+                    log.warn("accept queue data error:{}", e.getMessage(), e);
+                }
+            }
+        };
     }
 
     @Override
@@ -42,36 +51,21 @@ public class RedissonQueue<T> implements Queue<T> {
 
     @Override
     public synchronized void consume(Consumer<T> consumer) {
-        boolean doStart = consumers.isEmpty();
         consumers.add(consumer);
-        if (doStart) {
+        if (!running) {
             startConsumer();
         }
     }
 
+    @SneakyThrows
+    protected T take() {
+        return realQueue.take();
+    }
+
     protected void startConsumer() {
         running = true;
-        consumeFuture = executorService.submit(() -> {
-            for (; running; ) {
-                if (consumers.isEmpty()) {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    continue;
-                }
-                try {
-                    T data = realQueue.take();
-                    for (Consumer<T> consumer : consumers) {
-                        consumer.accept(data);
-                    }
-                } catch (InterruptedException e) {
-                    running = false;
-                    Thread.currentThread().interrupt();
-                }
-            }
-        });
+        stream = Stream.generate(this::take).filter(Objects::nonNull);
+        stage = CompletableFuture.runAsync(() -> stream.parallel().forEach(t -> consumer.accept(t)), executorService);
     }
 
     @Override
@@ -82,11 +76,11 @@ public class RedissonQueue<T> implements Queue<T> {
 
     @Override
     public void close() {
-        consumers.clear();
         realQueue.expire(1, TimeUnit.MILLISECONDS);
-//        realQueue.delete();
         running = false;
-        if (consumeFuture != null)
-            consumeFuture.cancel(false);
+        if (stream != null) {
+            stream.close();
+            stage.cancel(true);
+        }
     }
 }

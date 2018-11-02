@@ -1,6 +1,5 @@
 package org.hswebframework.task.spring.configuration;
 
-import org.hswebframework.task.worker.executor.supports.DefaultRunnableTask;
 import org.hswebframework.task.worker.executor.supports.DefaultRunnableTaskBuilder;
 import org.hswebframework.task.worker.executor.supports.RunnableTaskBuilderProvider;
 import org.springframework.beans.BeansException;

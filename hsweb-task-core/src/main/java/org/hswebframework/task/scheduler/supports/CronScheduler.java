@@ -42,7 +42,7 @@ public class CronScheduler extends AbstractScheduler {
     @Override
     protected void initFromConfiguration(Map<String, Object> configuration) {
         String cron = (String) configuration.get("cron");
-        String type = (String) configuration.getOrDefault("cronType", "QUARTZ");
+        String type = String.valueOf(configuration.getOrDefault("cronType", "QUARTZ"));
         CronParser parser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(this.cronType = CronType.valueOf(type.toUpperCase())));
         this.executionTime = ExecutionTime.forCron(this.cron = parser.parse(cron).validate());
     }
@@ -79,7 +79,7 @@ public class CronScheduler extends AbstractScheduler {
     public Map<String, Object> getConfiguration() {
         Map<String, Object> config = new HashMap<>();
         config.put("type", getType());
-        config.put("cron", cron);
+        config.put("cron", cron.asString());
         config.put("cronType", cronType.name().toUpperCase());
         return config;
     }
