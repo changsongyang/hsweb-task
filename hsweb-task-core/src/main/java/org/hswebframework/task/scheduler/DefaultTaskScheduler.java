@@ -235,6 +235,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
             }
             log.debug("repeated schedule[{}],do cancel old scheduler:[{}],new scheduler:[{}]", historyId, old.scheduler, scheduler);
             old.cancel(true);
+
         }
 
         RunningScheduler runningScheduler = new RunningScheduler();
@@ -299,7 +300,7 @@ public class DefaultTaskScheduler implements TaskScheduler {
                             runningScheduler.cancelRunnable = () -> worker.getExecutor().cancel(id);
                             eventPublisher.publish(new TaskExecuteBeforeEvent(id, task));
                         } else {
-                            log.warn("can not find any worker for task:[{}]", task.getId());
+                            log.warn("can not find any worker for task:[{}],taskWorkerManager:{}", task.getId(),taskWorkerManager);
                             lock.release();
                             runningScheduler.resetRunning();
                             changeTaskStatus(task, TaskStatus.noWorker);

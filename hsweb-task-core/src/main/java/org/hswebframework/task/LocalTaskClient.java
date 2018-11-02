@@ -2,13 +2,17 @@ package org.hswebframework.task;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.job.JobDetail;
 import org.hswebframework.task.job.JobRepository;
+import org.hswebframework.task.lock.Lock;
+import org.hswebframework.task.lock.LockManager;
 import org.hswebframework.task.scheduler.Scheduler;
 import org.hswebframework.task.scheduler.SchedulerFactory;
 import org.hswebframework.task.scheduler.TaskScheduler;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhouhao
@@ -16,6 +20,7 @@ import java.util.Map;
  */
 @Getter
 @Setter
+@Slf4j
 public class LocalTaskClient implements TaskClient {
 
     private JobRepository jobRepository;
@@ -28,6 +33,8 @@ public class LocalTaskClient implements TaskClient {
 
     private TaskFactory taskFactory;
 
+    private LockManager lockManager;
+
     @Override
     public void submitJob(JobDetail jobDetail) {
         jobRepository.save(jobDetail);
@@ -38,16 +45,22 @@ public class LocalTaskClient implements TaskClient {
         Scheduler scheduler = schedulerFactory.create(schedulerConfiguration);
 
         if (taskId != null && jobId != null) {
-            Task task = taskRepository.findById(taskId);
-            JobDetail job = jobRepository.findById(jobId);
-            if (task == null) {
-                //创建新当task
-                task = taskFactory.create(job);
-                task.setId(taskId);
-                task.setStatus(TaskStatus.preparing);
-                taskRepository.save(task);
+            Lock lock = lockManager.tryGetLock("create-task-lock:" + taskId, 30, TimeUnit.SECONDS);
+            try {
+                Task task = taskRepository.findById(taskId);
+                JobDetail job = jobRepository.findById(jobId);
+                if (task == null) {
+                    log.debug("create new task [{}] for job [{}]", taskId, jobId);
+                    //创建新当task
+                    task = taskFactory.create(job);
+                    task.setId(taskId);
+                    task.setStatus(TaskStatus.preparing);
+                    taskRepository.save(task);
+                }
+                taskScheduler.scheduleTask(taskId, scheduler);
+            } finally {
+                lock.release();
             }
-            taskScheduler.scheduleTask(taskId, scheduler);
         } else if (jobId != null) {
             taskScheduler.scheduleJob(jobId, scheduler);
         } else {

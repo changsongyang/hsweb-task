@@ -80,7 +80,11 @@ public class DefaultTaskWorkerManager implements TaskWorkerManager {
 
     @Override
     public void startup() {
-
+        if(!workerJoinListeners.isEmpty()&&!workerRepository.isEmpty()){
+            for (TaskWorker taskWorker : workerRepository.values()) {
+                workerJoinListeners.forEach((integer, taskWorkerConsumer) ->taskWorkerConsumer.accept(taskWorker) );
+            }
+        }
     }
 
     @Override

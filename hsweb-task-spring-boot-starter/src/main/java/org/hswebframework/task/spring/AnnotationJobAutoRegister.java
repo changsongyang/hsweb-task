@@ -1,6 +1,7 @@
 package org.hswebframework.task.spring;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.TaskClient;
 import org.hswebframework.task.job.JobDetail;
 import org.hswebframework.task.spring.annotation.Job;
@@ -22,6 +23,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -31,6 +35,7 @@ import java.util.stream.Stream;
  * @author zhouhao
  * @since 1.0.0
  */
+@Slf4j
 public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLineRunner {
 
     @Autowired
@@ -41,6 +46,8 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
 
     private List<Runnable> allScheduler = new ArrayList<>();
 
+    @Autowired
+    private Executor executor;
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
         return bean;
@@ -49,7 +56,7 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         Class clazz = ClassUtils.getUserClass(bean);
-
+        TaskProperties.WorkerProperties workerProperties=taskProperties.getWorker().validate();
         ReflectionUtils.doWithMethods(clazz, method -> {
             Job job = method.getAnnotation(Job.class);
             if (job != null) {
@@ -62,8 +69,9 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
                 jobDetail.setJobType("java-method");
                 jobDetail.setContent(clazz.getName() + "." + method.getName());
                 jobDetail.setEnabled(true);
-                jobDetail.setGroup(taskProperties.getWorker().getId());
-                jobDetail.setClientId(taskProperties.getWorker().getId());
+                jobDetail.setGroup(workerProperties.getClientGroup());
+
+                jobDetail.setClientId(workerProperties.getId());
                 jobDetail.setDescription("java-method-annotation-job");
                 jobDetail.setExecuteTimeOut(TimeUnit.SECONDS.toMillis(job.timeoutSeconds()));
                 jobDetail.setRetryWithout(Stream.of(job.retryWithout()).map(Class::getName).collect(Collectors.toList()));
@@ -105,7 +113,7 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
         }
         if (scheduled.fixedRate() != -1) {
             map.put("type", "period");
-            map.put("initialDelay", scheduled.initialDelay());
+            map.put("initialDelay", scheduled.initialDelay() == -1 ? 0 : scheduled.initialDelay());
             map.put("period", scheduled.fixedRate());
             map.put("timeUnit", TimeUnit.MILLISECONDS);
             return map;
@@ -121,6 +129,14 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
 
     @Override
     public void run(String... args) {
-        allScheduler.forEach(Runnable::run);
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            log.debug("submit schedule request size:{}", allScheduler.size());
+            allScheduler.forEach(Runnable::run);
+        }, executor);
     }
 }

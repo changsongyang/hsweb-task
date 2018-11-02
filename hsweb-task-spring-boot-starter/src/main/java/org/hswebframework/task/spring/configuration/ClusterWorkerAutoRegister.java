@@ -12,6 +12,7 @@ import org.springframework.boot.CommandLineRunner;
 
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 集群worker自动注册

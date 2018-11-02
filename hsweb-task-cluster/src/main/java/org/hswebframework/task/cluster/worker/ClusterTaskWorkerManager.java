@@ -22,13 +22,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ClusterTaskWorkerManager implements TaskWorkerManager {
 
-    private ClusterManager          clusterManager;
+    private ClusterManager clusterManager;
     private Map<String, WorkerInfo> clusterWorkerInfoList;
-    private Topic<WorkerInfo>       workerJoinTopic;
-    private Topic<WorkerInfo>       workerLeaveTopic;
-    private TimeoutOperations       timeoutOperations;
+    private Topic<WorkerInfo> workerJoinTopic;
+    private Topic<WorkerInfo> workerLeaveTopic;
+    private TimeoutOperations timeoutOperations;
 
-    private Map<Integer, Consumer<TaskWorker>> workerJoinListeners  = new ConcurrentHashMap<>();
+    private Map<Integer, Consumer<TaskWorker>> workerJoinListeners = new ConcurrentHashMap<>();
     private Map<Integer, Consumer<TaskWorker>> workerLeaveListeners = new ConcurrentHashMap<>();
 
     private boolean running = false;
@@ -81,6 +81,7 @@ public class ClusterTaskWorkerManager implements TaskWorkerManager {
     }
 
     public void doRegister(TaskWorker worker) {
+        log.debug("register worker:{}",worker);
         localWorker.put(worker.getId(), worker);
         worker.startup();
         workerJoinListeners.forEach((integer, workerConsumer) -> workerConsumer.accept(worker));
@@ -172,5 +173,10 @@ public class ClusterTaskWorkerManager implements TaskWorkerManager {
         });
         clientLeaveCheckerThread.setName("worker-checker");
         clientLeaveCheckerThread.start();
+    }
+
+    @Override
+    public String toString() {
+        return "ClusterWorkerManager:worker size:" + localWorker.size();
     }
 }

@@ -116,4 +116,9 @@ public class DefaultTaskWorker implements TaskWorker {
     public void resume() {
         checkStatus();
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()+"(id="+id+",name="+name+",groups="+(groups==null?null:String.join(",",groups))+")";
+    }
 }

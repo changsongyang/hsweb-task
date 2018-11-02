@@ -4,6 +4,7 @@ import org.hswebframework.task.*;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.client.SchedulerTaskClient;
 import org.hswebframework.task.job.JobRepository;
+import org.hswebframework.task.lock.LockManager;
 import org.hswebframework.task.scheduler.SchedulerFactory;
 import org.hswebframework.task.scheduler.TaskScheduler;
 import org.hswebframework.task.worker.executor.RunnableTaskBuilder;
@@ -27,6 +28,7 @@ public class LocalWorkerConfiguration {
     public TaskClient clusterTaskClient(TaskFactory taskFactory,
                                         SchedulerFactory schedulerFactory,
                                         TaskScheduler taskScheduler,
+                                        LockManager lockManager,
                                         JobRepository jobRepository,
                                         TaskRepository taskRepository) {
         LocalTaskClient localTaskClient = new LocalTaskClient();
@@ -34,10 +36,15 @@ public class LocalWorkerConfiguration {
         localTaskClient.setTaskFactory(taskFactory);
         localTaskClient.setSchedulerFactory(schedulerFactory);
         localTaskClient.setTaskRepository(taskRepository);
+        localTaskClient.setLockManager(lockManager);
         localTaskClient.setTaskScheduler(taskScheduler);
         return localTaskClient;
     }
 
+    @Bean
+    public LocalWorkerAutoRegister localWorkerAutoRegister(){
+        return new LocalWorkerAutoRegister();
+    }
 
     @Bean
     public TaskExecutor taskExecutor(ExecutorService executorService,

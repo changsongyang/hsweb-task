@@ -7,6 +7,7 @@ import org.hswebframework.task.TaskRepository;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.client.SchedulerTaskClient;
 import org.hswebframework.task.job.JobRepository;
+import org.hswebframework.task.lock.LockManager;
 import org.hswebframework.task.scheduler.SchedulerFactory;
 import org.hswebframework.task.scheduler.TaskScheduler;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +25,7 @@ public class ClusterSchedulerConfiguration {
     @Primary
     public TaskClient clusterTaskClient(ClusterManager clusterManager,
                                         TaskFactory taskFactory,
+                                        LockManager lockManager,
                                         SchedulerFactory schedulerFactory,
                                         TaskScheduler taskScheduler,
                                         JobRepository jobRepository,
@@ -33,6 +35,7 @@ public class ClusterSchedulerConfiguration {
         localTaskClient.setTaskFactory(taskFactory);
         localTaskClient.setSchedulerFactory(schedulerFactory);
         localTaskClient.setTaskRepository(taskRepository);
+        localTaskClient.setLockManager(lockManager);
         localTaskClient.setTaskScheduler(taskScheduler);
         return new SchedulerTaskClient(clusterManager, localTaskClient);
     }

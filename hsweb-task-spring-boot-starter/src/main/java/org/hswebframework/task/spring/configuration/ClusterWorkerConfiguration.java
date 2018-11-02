@@ -34,6 +34,11 @@ public class ClusterWorkerConfiguration {
     }
 
     @Bean
+    public ClusterWorkerAutoRegister clusterWorkerAutoRegister(){
+        return new ClusterWorkerAutoRegister();
+    }
+
+    @Bean
     public TaskExecutor taskExecutor(
             TimeoutOperations timeoutOperations,
             TaskProperties properties,

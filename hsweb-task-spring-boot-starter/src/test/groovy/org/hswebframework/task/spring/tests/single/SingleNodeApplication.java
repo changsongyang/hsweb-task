@@ -19,11 +19,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class SingleNodeApplication {
     public static void main(String[] args) {
-        SpringApplication.run(SingleNodeApplication.class);
+        SpringApplication.run(SingleNodeApplication.class,"--hsweb.task.cluster.enabled=false");
     }
 
     @Job(id = "test", name = "测试")
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 1000,initialDelay = 10)
     public void test() {
         System.out.println(1234);
     }

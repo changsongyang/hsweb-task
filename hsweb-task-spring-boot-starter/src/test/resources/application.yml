@@ -7,11 +7,10 @@ hsweb:
 #    cluster:
 #      enabled: true
     worker:
-      id: ${spring.application.name}
-      groups: ${spring.application.name}
+      groups: ${spring.application.name},test-group #worker将执行哪些分组的任务
       name: 测试worker
-    scheduler:
-      id: ${spring.application.name}
+      client-group: ${spring.application.name} #worker作为client自动提交任务时,将使用此分组,必须为groups属性的子集
+      host: ${HOSTNAME}
 logging:
   level:
     org.hswebframework: debug

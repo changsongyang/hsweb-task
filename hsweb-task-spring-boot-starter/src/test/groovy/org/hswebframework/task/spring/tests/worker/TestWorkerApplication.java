@@ -13,6 +13,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class TestWorkerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(TestWorkerApplication.class);
+        SpringApplication.run(TestWorkerApplication.class,args);
     }
 }

@@ -39,9 +39,14 @@ public abstract class AbstractScheduler implements Scheduler {
 
     protected boolean started = false;
 
+    protected boolean canceled = false;
+
     protected abstract void initFromConfiguration(Map<String, Object> configuration);
 
     protected void fire(ScheduleContext context) {
+        if(canceled){
+            return;
+        }
         fireTimes.incrementAndGet();
         for (Consumer<ScheduleContext> consumer : allTriggerListener) {
             consumer.accept(context);
@@ -104,8 +109,12 @@ public abstract class AbstractScheduler implements Scheduler {
         if (time < 0) {
             return;
         }
+        if (canceled) {
+            return;
+        }
         AtomicReference<ScheduledFuture> futureAtomicReference = new AtomicReference<>();
         Runnable runnable = () -> fire(new ScheduleContext() {
+
             @Override
             public boolean isLastExecute() {
                 return getNextExecuteTime() >= 0;
@@ -126,13 +135,16 @@ public abstract class AbstractScheduler implements Scheduler {
 
             @Override
             public void next(boolean currentSuccess) {
+                if (canceled) {
+                    return;
+                }
                 doStart();
                 cancel();
             }
         });
 
         long delay = time - System.currentTimeMillis();
-        if (delay <= 0) {
+        if (delay < 0) {
             log.warn("illegal delay time :{},scheduler:{}", delay, this.toString());
         }
         futureAtomicReference.set(executorService.schedule(
@@ -150,6 +162,7 @@ public abstract class AbstractScheduler implements Scheduler {
     @Override
     public Scheduler cancel(boolean force) {
         callCancelListener();
+        canceled = true;
         return this;
     }
 

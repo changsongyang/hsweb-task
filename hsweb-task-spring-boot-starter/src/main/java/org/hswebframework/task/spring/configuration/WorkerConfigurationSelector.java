@@ -32,12 +32,10 @@ public class WorkerConfigurationSelector implements ImportSelector, EnvironmentA
         imports.add("org.hswebframework.task.spring.configuration.TaskConfiguration");
         imports.add("org.hswebframework.task.spring.configuration.WorkerConfiguration");
         if (!"true".equals(environment.getProperty("hsweb.task.cluster.enabled", String.valueOf(isCluster)))) {
-            imports.add("org.hswebframework.task.spring.configuration.LocalWorkerAutoRegister");
             imports.add("org.hswebframework.task.spring.configuration.LocalWorkerConfiguration");
         } else {
             imports.add("org.hswebframework.task.spring.configuration.ClusterManagerConfiguration");
             imports.add("org.hswebframework.task.spring.configuration.ClusterWorkerConfiguration");
-            imports.add("org.hswebframework.task.spring.configuration.ClusterWorkerAutoRegister");
             imports.add("org.hswebframework.task.spring.configuration.ClusterWorkerManagerConfiguration");
         }
 

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TestJob {
 
-    @Job(id = "test.job", name = "测试任务")
+    @Job(id = "test.job", name = "测试任务",parallel = true)
     @Scheduled(cron = "0/5 * * * * ?")
     public void test() throws InterruptedException {
         Thread.sleep(5000);
