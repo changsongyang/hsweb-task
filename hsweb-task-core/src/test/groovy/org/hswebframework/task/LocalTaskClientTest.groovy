@@ -47,6 +47,7 @@ class LocalTaskClientTest extends Specification {
         client.setTaskRepository(taskScheduler.getTaskRepository());
         client.setTaskFactory(taskScheduler.getTaskFactory())
         client.setTaskScheduler(taskScheduler)
+        client.setLockManager(taskScheduler.getLockManager());
         taskScheduler.startup();
         client.startup();
     }

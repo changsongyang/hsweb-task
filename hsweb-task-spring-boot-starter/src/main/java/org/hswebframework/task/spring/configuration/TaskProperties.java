@@ -63,6 +63,7 @@ public class TaskProperties {
                 clientGroup = groups[0];
             }
             Assert.hasText(clientGroup, "please set property: hsweb.task.worker.client-group ");
+            
             if (StringUtils.isEmpty(host)) {
                 host = hostName;
             }
