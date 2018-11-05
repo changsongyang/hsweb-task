@@ -356,7 +356,11 @@ public class DefaultTaskScheduler implements TaskScheduler {
                                 || his.getStatus() == null
                                 || his.getStatus().isContestable())
                         .findFirst()
-                        .orElseThrow(() -> new UnsupportedOperationException("other task scheduler are running this task:" + taskId));
+                        .orElse(null);
+                if (history == null) {
+                    //其他调度器正在调度,可能是重复提交的任务.
+                    return null;
+                }
                 //不是同一个调度器获取的任务,则抢过来进行调度
                 if (!history.getSchedulerId().equals(getSchedulerId())) {
                     history.setSchedulerId(getSchedulerId());
