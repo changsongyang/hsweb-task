@@ -33,7 +33,7 @@ public class RedissonSubErrorTest {
                 consumer.accept(msg);
 
                 //*********[删除本行可解决此问题]**********
-//                topic.removeAllListeners();
+//                topic.removeAllListeners(); //https://github.com/redisson/redisson/issues/1696
                 //fixed
                 topic.removeListener(this);
             }
