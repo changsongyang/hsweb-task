@@ -37,14 +37,14 @@ public abstract class AbstractScheduler implements Scheduler {
 
     protected AtomicLong fireTimes = new AtomicLong();
 
-    protected boolean started = false;
+    protected volatile boolean started = false;
 
-    protected boolean canceled = false;
+    protected volatile boolean canceled = false;
 
     protected abstract void initFromConfiguration(Map<String, Object> configuration);
 
     protected void fire(ScheduleContext context) {
-        if(canceled){
+        if (canceled) {
             return;
         }
         fireTimes.incrementAndGet();
@@ -97,8 +97,10 @@ public abstract class AbstractScheduler implements Scheduler {
 
     @Override
     public Scheduler start() {
-        started = true;
-        doStart();
+        if (!started) {
+            started = true;
+            doStart();
+        }
         return this;
     }
 
