@@ -1,5 +1,6 @@
 package org.hswebframework.task.cluster.redisson;
 
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.cluster.ClusterCountDownLatch;
@@ -23,6 +24,8 @@ import java.util.function.Consumer;
  */
 @Slf4j
 public class RedissonClusterManager implements ClusterManager {
+
+    @Getter
     private RedissonClient redissonClient;
 
     private ExecutorService executorService;

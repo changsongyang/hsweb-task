@@ -49,11 +49,16 @@ public class LocalTaskClient implements TaskClient {
             try {
                 Task task = taskRepository.findById(taskId);
                 JobDetail job = jobRepository.findById(jobId);
+                if (job == null) {
+                    log.error("schedule error,job[{}] not fount", jobId);
+                    return;
+                }
                 if (task == null) {
                     log.debug("create new task [{}] for job [{}]", taskId, jobId);
                     //创建新当task
                     task = taskFactory.create(job);
                     task.setId(taskId);
+                    task.setJobId(jobId);
                     task.setStatus(TaskStatus.preparing);
                     taskRepository.save(task);
                 }

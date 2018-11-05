@@ -2,8 +2,16 @@ package org.hswebframework.task.spring.configuration;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.hswebframework.task.TaskRepository;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.redisson.RedissonClusterManager;
+import org.hswebframework.task.cluster.redisson.RedissonLockManager;
+import org.hswebframework.task.cluster.redisson.repository.RedissonJobRepository;
+import org.hswebframework.task.cluster.redisson.repository.RedissonScheduleHistoryRepository;
+import org.hswebframework.task.cluster.redisson.repository.RedissonTaskRepository;
+import org.hswebframework.task.job.JobRepository;
+import org.hswebframework.task.lock.LockManager;
+import org.hswebframework.task.scheduler.history.ScheduleHistoryRepository;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.api.RedissonReactiveClient;
@@ -13,6 +21,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import javax.annotation.PostConstruct;
 
 /**
  * @author zhouhao
@@ -33,14 +43,45 @@ public class ClusterManagerConfiguration {
 
         private String password;
 
-        @Bean
-        public RedissonClusterManager redissonClusterManager() {
+        private RedissonClient redissonClient;
+
+        @PostConstruct
+        public void init() {
             Config config = new Config();
             config.useSingleServer()
                     .setDatabase(database)
                     .setAddress(address)
                     .setPassword(password);
-            return new RedissonClusterManager(Redisson.create(config));
+            redissonClient = Redisson.create(config);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(TaskRepository.class)
+        public TaskRepository redissonTaskRepository() {
+            return new RedissonTaskRepository(redissonClient.getMap("hsweb:task:repository"));
+        }
+
+
+        @Bean
+        @ConditionalOnMissingBean(JobRepository.class)
+        public JobRepository redissonJobRepositoryy() {
+            return new RedissonJobRepository(redissonClient.getMap("hsweb:job:repository"));
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(ScheduleHistoryRepository.class)
+        public ScheduleHistoryRepository redissonScheduleHistoryRepository() {
+            return new RedissonScheduleHistoryRepository(redissonClient.getMap("hsweb:schedule-history:repository"));
+        }
+
+        @Bean
+        public RedissonClusterManager redissonClusterManager() {
+            return new RedissonClusterManager(redissonClient);
+        }
+
+        @Bean
+        public LockManager redissonLockManager() {
+            return new RedissonLockManager(redissonClient);
         }
     }
 }

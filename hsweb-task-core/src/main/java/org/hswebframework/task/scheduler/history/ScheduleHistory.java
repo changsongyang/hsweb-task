@@ -24,6 +24,11 @@ public class ScheduleHistory {
     private String schedulerId;
 
     /**
+     * 创建此调度的worker
+     */
+    private String createSchedulerId;
+
+    /**
      * 作业ID
      *
      * @see JobDetail#id

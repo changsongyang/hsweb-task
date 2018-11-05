@@ -12,8 +12,4 @@ public interface JobRepository {
 
     JobDetail delete(String id);
 
-    void enable(String id);
-
-    void disable(String id);
-
 }

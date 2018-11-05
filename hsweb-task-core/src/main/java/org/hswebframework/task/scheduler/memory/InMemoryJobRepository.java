@@ -39,14 +39,4 @@ public class InMemoryJobRepository implements JobRepository {
     public JobDetail delete(String id) {
         return jobs.remove(id);
     }
-
-    @Override
-    public void enable(String id) {
-        Optional.ofNullable(findById(id)).ifPresent(job -> job.setEnabled(true));
-    }
-
-    @Override
-    public void disable(String id) {
-        Optional.ofNullable(findById(id)).ifPresent(job -> job.setEnabled(false));
-    }
 }

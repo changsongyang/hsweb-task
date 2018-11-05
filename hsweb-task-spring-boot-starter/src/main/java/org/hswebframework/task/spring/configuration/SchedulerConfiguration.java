@@ -54,7 +54,7 @@ public class SchedulerConfiguration {
 
     @Bean(initMethod = "startup", destroyMethod = "shutdownNow")
     @ConditionalOnMissingBean(TaskScheduler.class)
-    public DefaultTaskScheduler defaultTaskScheduler(SchedulerFactory schedulerFactory,
+    public TaskScheduler defaultTaskScheduler(SchedulerFactory schedulerFactory,
                                                      TaskWorkerManager taskWorkerManager,
                                                      EventPublisher eventPublisher,
                                                      TaskRepository taskRepository,

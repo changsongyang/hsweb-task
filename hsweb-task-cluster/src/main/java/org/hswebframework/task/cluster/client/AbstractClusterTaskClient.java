@@ -3,7 +3,10 @@ package org.hswebframework.task.cluster.client;
 import org.hswebframework.task.TaskClient;
 import org.hswebframework.task.cluster.ClusterManager;
 import org.hswebframework.task.cluster.Queue;
+import org.hswebframework.task.cluster.scheduler.TaskSchedulerInfo;
 import org.hswebframework.task.job.JobDetail;
+
+import java.util.Map;
 
 
 /**
@@ -14,16 +17,18 @@ public abstract class AbstractClusterTaskClient implements TaskClient {
 
     private ClusterManager clusterManager;
 
+    private Map<String, TaskSchedulerInfo> schedulerRegistry;
+
     protected AbstractClusterTaskClient(ClusterManager clusterManager) {
         this.clusterManager = clusterManager;
     }
 
     public Queue<JobDetail> getCreateJobRequestQueue() {
-        return clusterManager.getQueue("client:job-request");
+        return clusterManager.getQueue("cluster:client:job-request");
     }
 
-    public Queue<ScheduleRequest> getScheduleRequestQueue() {
-        return clusterManager.getQueue("client:schedule-request");
+    public Queue<ScheduleRequest> getScheduleRequestQueue(String schedulerId) {
+        return clusterManager.getQueue("cluster:client:schedule-request:" + schedulerId);
     }
 
 }

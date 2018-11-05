@@ -9,6 +9,8 @@ package org.hswebframework.task.scheduler;
  */
 public interface TaskScheduler {
 
+    String getId();
+
     /**
      * 启动一个作业调度,每次调用都将创建新的{@link org.hswebframework.task.Task}.
      * 如果多次调用,并传入相同的jobId,此job将会被多次执行.

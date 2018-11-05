@@ -54,6 +54,13 @@
     <artifactId>hsweb-task-cluster</artifactId>
     <version>${hsweb.task.version}</version>
 </dependency>
+<!--使用redisson作为redis客户端进行集群管理-->
+<dependency>
+    <groupId>org.redisson</groupId>
+    <artifactId>redisson</artifactId>
+    <version>3.8.2</version>
+</dependency>
+
 ```
  
 application.yml
