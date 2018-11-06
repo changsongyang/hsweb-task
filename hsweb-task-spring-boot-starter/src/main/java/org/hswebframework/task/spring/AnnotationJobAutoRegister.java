@@ -48,6 +48,7 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
 
     @Autowired
     private Executor executor;
+
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
         return bean;
@@ -56,7 +57,7 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         Class clazz = ClassUtils.getUserClass(bean);
-        TaskProperties.WorkerProperties workerProperties=taskProperties.getWorker().validate();
+        TaskProperties.WorkerProperties workerProperties = taskProperties.getWorker().validate();
         ReflectionUtils.doWithMethods(clazz, method -> {
             Job job = method.getAnnotation(Job.class);
             if (job != null) {
@@ -83,13 +84,15 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
                 Map<String, Object> config = null;
                 if (scheduled != null) {
                     config = createSpringScheduledAnnConfig(scheduled);
-                }
-                for (Annotation annotation : method.getAnnotations()) {
-                    Scheduler scheduler = annotation.annotationType().getAnnotation(Scheduler.class);
-                    if (null != scheduler) {
-                        config = convertSchedulerConfiguration(annotation);
-                        config.put("type", scheduler.type());
-                        break;
+                } else {
+                    //适配自定义注解
+                    for (Annotation annotation : method.getAnnotations()) {
+                        Scheduler scheduler = annotation.annotationType().getAnnotation(Scheduler.class);
+                        if (null != scheduler) {
+                            config = convertSchedulerConfiguration(annotation);
+                            config.put("type", scheduler.type());
+                            break;
+                        }
                     }
                 }
                 taskClient.submitJob(jobDetail);
@@ -133,7 +136,8 @@ public class AnnotationJobAutoRegister implements BeanPostProcessor, CommandLine
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
+                Thread.currentThread().interrupt();
             }
             log.debug("submit schedule request size:{}", allScheduler.size());
             allScheduler.forEach(Runnable::run);
