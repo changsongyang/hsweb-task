@@ -7,5 +7,5 @@ import org.hswebframework.task.Task;
  * @since 1.0.0
  */
 public interface RunnableTaskBuilder {
-    RunnableTask build(Task task) throws Exception;
+    RunnableTask build(Task task) ;
 }

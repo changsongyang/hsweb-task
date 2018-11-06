@@ -16,6 +16,8 @@ import java.util.stream.Stream;
 public class JavaMethodInvokeTaskProvider implements RunnableTaskBuilderProvider {
     private ClassLoader classLoader;
 
+    private static Object[] emptyArgs = new Object[0];
+
     private Function<Class, Object> instanceGetter = (clazz) -> {
 
         try {
@@ -69,10 +71,10 @@ public class JavaMethodInvokeTaskProvider implements RunnableTaskBuilderProvider
         Object instance = Modifier.isStatic(method.getModifiers()) ? null : instanceGetter.apply(clazz);
         Method finaleMethod = method;
         int parameterCount = method.getParameterCount();
-        Object[] invokeParameter = new Object[parameterCount];
         Class[] methodTypes = method.getParameterTypes();
         return (context) -> {
             log.debug("invoke method :{}", content);
+            Object[] invokeParameter = parameterCount > 0 ? new Object[parameterCount] : emptyArgs;
             for (int i = 0; i < parameterCount; i++) {
                 invokeParameter[i] = context.getParameter(String.valueOf(i), methodTypes[i]);
             }

@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
+ * 调度器端任务客户端,用于接收在其他客户端提交的任务
+ *
  * @author zhouhao
  * @since 1.0.0
  */

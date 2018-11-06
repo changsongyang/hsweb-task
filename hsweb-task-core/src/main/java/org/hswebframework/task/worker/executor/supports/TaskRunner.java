@@ -9,4 +9,7 @@ import org.hswebframework.task.worker.executor.ExecuteContext;
  */
 public interface TaskRunner {
     Object run(ExecuteContext context) throws Throwable;
+
+    default void clear() {
+    }
 }

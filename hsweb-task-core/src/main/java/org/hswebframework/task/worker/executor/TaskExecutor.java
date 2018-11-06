@@ -22,9 +22,23 @@ public interface TaskExecutor extends ExecuteCounter {
      */
     String submitTask(Task task, Consumer<TaskOperationResult> resultConsumer);
 
+    /**
+     * 取消任务
+     *
+     * @param id 任务执行ID
+     * @return 是否取消成功
+     */
     boolean cancel(String id);
 
+    /**
+     * 停止此执行器
+     *
+     * @param force 是否强制停止
+     */
     void shutdown(boolean force);
 
+    /**
+     * 启动此执行器,启动后才能进行其他操作
+     */
     void startup();
 }

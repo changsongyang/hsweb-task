@@ -1,5 +1,6 @@
 package org.hswebframework.task.job;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -19,6 +20,7 @@ import java.util.Map;
 @Getter
 @Setter
 @ToString
+@EqualsAndHashCode
 public class JobDetail implements Serializable {
 
     /**
@@ -104,4 +106,5 @@ public class JobDetail implements Serializable {
      * 是否启用
      */
     private boolean enabled;
+
 }

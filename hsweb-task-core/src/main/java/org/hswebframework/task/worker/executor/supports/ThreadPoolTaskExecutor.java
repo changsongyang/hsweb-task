@@ -9,7 +9,6 @@ import org.hswebframework.task.worker.executor.RunnableTaskBuilder;
 import org.hswebframework.task.worker.executor.TaskExecutor;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,38 +63,47 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
     @Override
     @SneakyThrows
     public String submitTask(Task task, Consumer<TaskOperationResult> resultConsumer) {
-        RunnableTask runnableTask = taskBuilder.build(task);
         waiting.incrementAndGet();
+        RunnableTask runnableTask = taskBuilder.build(task);
         AtomicReference<Future<?>> reference = new AtomicReference<>();
         runnings.put(runnableTask.getId(), reference);
         Future<?> future = executorService.submit(() -> {
-            waiting.decrementAndGet();
-            running.incrementAndGet();
-            log.info("start task [{}]", task.getId());
-            TaskOperationResult result = runnableTask.run();
-            log.info("task [{}] execute {}", task.getId(), result.getStatus());
-            running.decrementAndGet();
-            if (runnings.containsKey(runnableTask.getId())) {
-                runnings.remove(runnableTask.getId());
+            try {
+                waiting.decrementAndGet();
+                running.incrementAndGet();
+                log.info("start task [{}]", task.getId());
+                TaskOperationResult result = runnableTask.run();
+                log.info("task [{}] execute {}", task.getId(), result.getStatus());
+                //如果未被取消,则执行回调
+                if (runnings.containsKey(runnableTask.getId())) {
+                    runnings.remove(runnableTask.getId());
+                    resultConsumer.accept(result);
+                } else {
+                    log.warn("task[{}] maybe canceled", task.getId());
+                }
+                if (result.isSuccess()) {
+                    success.incrementAndGet();
+                } else {
+                    fail.incrementAndGet();
+                }
+            } finally {
+                running.decrementAndGet();
                 reference.set(null);
-                resultConsumer.accept(result);
-            } else {
-                log.warn("task[{}] maybe canceled", task.getId());
-            }
-            if (result.isSuccess()) {
-                success.incrementAndGet();
-            } else {
-                fail.incrementAndGet();
             }
         });
-        reference.set(future);
         submitted.incrementAndGet();
+        reference.set(future);
         return runnableTask.getId();
     }
 
     @Override
     public void shutdown(boolean force) {
         executorService.shutdown();
+    }
+
+    @Override
+    public void startup() {
+
     }
 
     @Override
@@ -123,8 +131,4 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
         return waiting.get();
     }
 
-    @Override
-    public void startup() {
-
-    }
 }

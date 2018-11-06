@@ -11,8 +11,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author zhouhao
@@ -20,13 +18,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class DefaultRunnableTask implements RunnableTask {
 
-    private final    String              id;
-    private final    Task                task;
-    private final    TaskRunner          runner;
-    private volatile TaskStatus          status;
-    private volatile TaskOperationResult lastResult;
-    private final    AtomicLong          successCounter = new AtomicLong();
-    private final    AtomicLong          failCounter    = new AtomicLong();
+    private final    String     id;
+    private final    Task       task;
+    private final    TaskRunner runner;
+    private volatile TaskStatus status;
 
     public DefaultRunnableTask(Task task, TaskRunner runner) {
         this.task = task;
@@ -52,9 +47,7 @@ public class DefaultRunnableTask implements RunnableTask {
             result.setSuccess(true);
             result.setStatus(TaskStatus.success);
             result.setResult(runResult);
-            successCounter.incrementAndGet();
         } catch (Throwable e) {
-            failCounter.incrementAndGet();
             result.setSuccess(false);
             result.setErrorName(e.getClass().getName());
             result.setMessage(e.getMessage());
@@ -64,7 +57,7 @@ public class DefaultRunnableTask implements RunnableTask {
             result.setErrorStack(writer.toString());
         }
         result.setEndTime(System.currentTimeMillis());
-        return lastResult = result;
+        return result;
     }
 
 
@@ -83,19 +76,4 @@ public class DefaultRunnableTask implements RunnableTask {
         return status;
     }
 
-    @Override
-    public TaskOperationResult getLastResult() {
-        return lastResult;
-    }
-
-
-    @Override
-    public long getSuccess() {
-        return successCounter.get();
-    }
-
-    @Override
-    public long getFail() {
-        return failCounter.get();
-    }
 }

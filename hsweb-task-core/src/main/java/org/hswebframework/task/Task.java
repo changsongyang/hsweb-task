@@ -1,5 +1,6 @@
 package org.hswebframework.task;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.hswebframework.task.job.JobDetail;
@@ -13,6 +14,7 @@ import org.hswebframework.task.job.JobDetail;
  */
 @Getter
 @Setter
+@EqualsAndHashCode
 public class Task {
 
     private String id;
@@ -33,6 +35,6 @@ public class Task {
 
     @Override
     public String toString() {
-        return "Task(id="+id+",jobId="+jobId+",jobName="+job.getName()+",status="+status+")";
+        return "Task(id=" + id + ",jobId=" + jobId + ",jobName=" + job.getName() + ",status=" + status + ")";
     }
 }
