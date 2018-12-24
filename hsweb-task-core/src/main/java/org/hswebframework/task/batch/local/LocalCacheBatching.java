@@ -1,5 +1,7 @@
 package org.hswebframework.task.batch.local;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.hswebframework.task.batch.Batching;
 
@@ -21,6 +23,10 @@ public class LocalCacheBatching<T> implements Batching<T> {
     private Consumer<List<T>> batch;
 
     private long lastInputTime = 0;
+
+    @Getter
+    @Setter
+    private long flushMinTime = 1000;
 
     private final Object lock = new Object();
 
@@ -76,8 +82,9 @@ public class LocalCacheBatching<T> implements Batching<T> {
     public void input(T data) {
         synchronized (lock) {
             cache.add(data);
+            boolean flushNow = System.currentTimeMillis() - lastInputTime > flushMinTime;
             lastInputTime = System.currentTimeMillis();
-            if (cache.size() >= batchSize) {
+            if (flushNow || cache.size() >= batchSize) {
                 flush();
             }
         }
@@ -96,6 +103,9 @@ public class LocalCacheBatching<T> implements Batching<T> {
 
     private void flush() {
         synchronized (lock) {
+            if (cache.isEmpty()) {
+                return;
+            }
             List<T> tmp = new ArrayList<>(cache);
             cache.clear();
             batch.accept(tmp);
