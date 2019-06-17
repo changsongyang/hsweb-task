@@ -7,6 +7,7 @@ import org.hswebframework.task.batch.Batching;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
@@ -30,7 +31,7 @@ public class LocalCacheBatching<T> implements Batching<T> {
 
     private final Object lock = new Object();
 
-    private static List<LocalCacheBatching> all = new ArrayList<>();
+    private static List<LocalCacheBatching> all = new CopyOnWriteArrayList<>();
 
     static {
         long flushInterval = Long.getLong("task.batch.flush-interval", 10000);
