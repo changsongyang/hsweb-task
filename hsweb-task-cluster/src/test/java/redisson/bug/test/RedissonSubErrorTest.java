@@ -17,17 +17,17 @@ public class RedissonSubErrorTest {
     static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors() * 2);
 
 
-    public static RTopic<String> getRequestTopic() {
+    public static RTopic getRequestTopic() {
         return redissonClient.getTopic("request-topic");
     }
 
-    public static RTopic<String> getResponseTopic(String msgId) {
+    public static RTopic getResponseTopic(String msgId) {
         return redissonClient.getTopic("response-topic-" + msgId);
     }
 
     public static void consume(String msgId, Consumer<String> consumer) {
-        RTopic<String> topic = getResponseTopic(msgId);
-        topic.addListener(new MessageListener<String>() {
+        RTopic topic = getResponseTopic(msgId);
+        topic.addListener(String.class,new MessageListener<String>() {
             @Override
             public void onMessage(CharSequence channel, String msg) {
                 consumer.accept(msg);
@@ -48,7 +48,7 @@ public class RedissonSubErrorTest {
         executorService.submit(() -> {
             try {
                 getRequestTopic()
-                        .addListener((channel, msg) -> {
+                        .addListener(String.class,(channel, msg) -> {
                             System.out.print("accept [" + msg + "] publish result: ");
                             getResponseTopic(msg).publish("response-" + msg + "(" + responseCounter.incrementAndGet() + ")");
                             System.out.println("ok");
