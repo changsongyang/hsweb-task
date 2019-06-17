@@ -88,12 +88,12 @@ public class RedissonClusterManager implements ClusterManager {
     }
 
     @Override
-    public <T> Topic<T> getTopic(String name) {
-        RTopic<T> rTopic = redissonClient.getTopic(prefix + name);
+    public <T> Topic<T> getTopic(Class<T> type, String name) {
+        RTopic rTopic = redissonClient.getTopic(prefix + name);
         return new Topic<T>() {
             @Override
             public long subscribe(Consumer<T> consumer) {
-                return rTopic.addListener((channel, msg) -> consumer.accept(msg));
+                return rTopic.addListener(type,(channel, msg) -> consumer.accept(msg));
             }
 
             @Override

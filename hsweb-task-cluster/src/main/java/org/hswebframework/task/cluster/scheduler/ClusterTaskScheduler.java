@@ -77,8 +77,8 @@ public class ClusterTaskScheduler extends DefaultTaskScheduler {
         super.startup();
         registry = clusterManager.getMap("cluster:scheduler:registry");
 
-        schedulerDownTopic = clusterManager.getTopic("cluster:scheduler:down");
-        schedulerUpTopic = clusterManager.getTopic("cluster:scheduler:up");
+        schedulerDownTopic = clusterManager.getTopic(TaskSchedulerInfo.class,"cluster:scheduler:down");
+        schedulerUpTopic = clusterManager.getTopic(TaskSchedulerInfo.class,"cluster:scheduler:up");
 
         //接收来自其他scheduler发来的请求
         getOperationRequestQueue(getSchedulerId())

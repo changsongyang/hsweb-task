@@ -22,7 +22,7 @@ public interface ClusterManager {
 
     <T> Queue<T> getQueue(String name);
 
-    <T> Topic<T> getTopic(String name);
+    <T> Topic<T> getTopic(Class<T> type, String name);
 
     ClusterCountDownLatch getCountDownLatch(String name);
 

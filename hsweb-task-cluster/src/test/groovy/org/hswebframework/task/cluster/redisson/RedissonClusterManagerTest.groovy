@@ -70,7 +70,7 @@ class RedissonClusterManagerTest extends Specification {
 
     def "测试Topic和CountDownLatch"() {
         given:
-        def topic = clusterManager.getTopic("test-topic");
+        def topic = clusterManager.getTopic(String.class,"test-topic");
         def res
         def countdownLatch = clusterManager.getCountDownLatch("test-countdown");
         countdownLatch.setCount(1)

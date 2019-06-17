@@ -45,7 +45,7 @@ public class ClusterNodeTaskWorker extends DefaultTaskWorker {
                     WorkerInfo old = workerInfoMap.put(workerInfo.getId(), workerInfo);
                     if (old == null && !first) {
                         clusterManager
-                                .getTopic("cluster:worker:join")
+                                .getTopic(WorkerInfo.class,"cluster:worker:join")
                                 .publish(workerInfo);
                     }
                     Thread.sleep(1000);

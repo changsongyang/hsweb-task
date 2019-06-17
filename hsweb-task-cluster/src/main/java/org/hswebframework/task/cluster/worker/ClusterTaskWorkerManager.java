@@ -42,8 +42,8 @@ public class ClusterTaskWorkerManager implements TaskWorkerManager {
         this.clusterManager = clusterManager;
         this.timeoutOperations = timeoutOperations;
         clusterWorkerInfoList = clusterManager.getMap("cluster:workers");
-        workerJoinTopic = clusterManager.getTopic("cluster:worker:join");
-        workerLeaveTopic = clusterManager.getTopic("cluster:worker:leave");
+        workerJoinTopic = clusterManager.getTopic(WorkerInfo.class,"cluster:worker:join");
+        workerLeaveTopic = clusterManager.getTopic(WorkerInfo.class,"cluster:worker:leave");
     }
 
     @Override
